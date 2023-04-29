@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration>
+
+<configuration scan="true">
+    <!-- Patterns based on https://github.com/spring-projects/spring-boot/blob/v2.7.2/spring-boot-project/spring-boot/src/main/resources/org/springframework/boot/logging/logback/defaults.xml -->
+    <conversionRule conversionWord="crlf" converterClass="com.utilsbot.config.CRLFLogConverter" />
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+    <property name="CONSOLE_LOG_PATTERN" value="${CONSOLE_LOG_PATTERN:-%clr(%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd'T'HH:mm:ss.SSSXXX}}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %crlf(%m){red} %n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>
+    <property name="FILE_LOG_PATTERN" value="${FILE_LOG_PATTERN:-%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.}} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%t] %-40.40logger{39} : %crlf(%m) %n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>
+<!--    <property name="LOG_PATH" value="${user.home}/logs"/>-->
+<!--    <property name="LOG_ARCHIVE" value="${LOG_PATH}/archive"/>-->
+
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${user.home}/logs/UtilsBot.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logFile.%d{yyyy-MM-dd}.zip</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <charset>utf-8</charset>
+            <Pattern>%d %-5level [%thread] %logger{0}: %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>64</queueSize>
+        <appender-ref ref="FILE"/>
+    </appender>
+
+    <!-- logs for file -->
+    <logger name="com.utilsbot.UtilsbotApplication" level="INFO">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="javax.activation" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="javax.management.remote" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="javax.xml.bind" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="ch.qos.logback" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="com.ryantenney" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="com.sun" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="com.zaxxer" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="io.undertow" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="io.undertow.websockets.jsr" level="ERROR">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.apache" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.apache.catalina.startup.DigesterFactory" level="OFF">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.bson" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.hibernate.validator" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.hibernate" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.hibernate.ejb.HibernatePersistence" level="OFF">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.infinispan" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.springframework" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.springframework.web" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.springframework.security" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.springframework.cache" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.thymeleaf" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="org.xnio" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="sun.rmi" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="liquibase" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="LiquibaseSchemaResolver" level="INFO">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="unknown.jul.logger" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="Validator" level="INFO">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="_org.springframework.web.servlet.HandlerMapping.Mappings" level="INFO">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+    <logger name="o.g.jersey.server.ApplicationHandler" level="WARN">
+        <appender-ref ref="FILE_ASYNC"/>
+    </logger>
+
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
+
+    <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator">
+        <resetJUL>true</resetJUL>
+    </contextListener>
+</configuration>
