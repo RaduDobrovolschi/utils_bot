@@ -16,6 +16,12 @@
 	<properties>
 		<java.version>20</java.version>
 	</properties>
+	<repositories>
+		<repository>
+			<id>clojars.org</id>
+			<url>https://repo.clojars.org</url>
+		</repository>
+	</repositories>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -59,29 +65,47 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-logging</artifactId>
 		</dependency>
+
+		<!-- START CACHE RELATED STUFF -->
+		<!-- provide second level caching functionality -->
+		<!-- https://mvnrepository.com/artifact/org.ehcache/ehcache -->
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
+			<groupId>org.ehcache</groupId>
+			<artifactId>ehcache</artifactId>
+			<version>3.10.6</version>
+		</dependency>
+		<!-- provide ehcache integration with hibernate -->
+		<!-- https://mvnrepository.com/artifact/org.hibernate/hibernate-ehcache -->
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-ehcache</artifactId>
+			<version>5.6.15.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.infinispan</groupId>
-			<artifactId>infinispan-hibernate-cache-v53</artifactId>
-			<version>13.0.14.Final</version>
+			<artifactId>infinispan-hibernate-cache-v60</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.infinispan</groupId>
 			<artifactId>infinispan-spring-boot-starter-embedded</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.infinispan</groupId>
-			<artifactId>infinispan-core</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.infinispan</groupId>
-			<artifactId>infinispan-jcache</artifactId>
-		</dependency>
+		<!-- END CACHE RELATED STUFF -->
 
-	</dependencies>
+		<dependency>
+			<groupId>net.clojars.suuft</groupId>
+			<artifactId>libretranslate-java</artifactId>
+			<version>1.0.5</version>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>6.0.6</version>
+        </dependency>
+    </dependencies>
 
 	<build>
 		<plugins>

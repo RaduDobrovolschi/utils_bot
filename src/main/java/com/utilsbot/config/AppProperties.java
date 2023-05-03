@@ -8,10 +8,31 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app", ignoreUnknownFields = false)
 public class AppProperties {
 
+    private String translationApiUrl;
+
+    @NotEmpty
+    private String ocrApiKey;
+
     private final Bot bot = new Bot();
 
     public Bot getBot() {
         return bot;
+    }
+
+    public String getOcrApiKey() {
+        return ocrApiKey;
+    }
+
+    public void setOcrApiKey(String ocrApiKey) {
+        this.ocrApiKey = ocrApiKey;
+    }
+
+    public String getTranslationApiUrl() {
+        return translationApiUrl;
+    }
+
+    public void setTranslationApiUrl(String translationApiUrl) {
+        this.translationApiUrl = translationApiUrl;
     }
 
     public static class Bot {
