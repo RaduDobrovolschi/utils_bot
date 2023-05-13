@@ -6,18 +6,14 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd
                         http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
-    <changeSet id="1_create_chat_config.xml-1" author="me">
-        <createTable tableName="chat_config">
-            <column name="id" type="bigint">
+    <changeSet id="2_create_user_data.xml-1" author="me">
+        <createTable tableName="user_data">
+            <column name="user_id" type="bigint">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="translation_target_lang" type="varchar(16)" defaultValue="NONE">
+            <column name="chat_id" type="bigint">
                 <constraints nullable="false"/>
             </column>
-            <column name="dad_bot" type="boolean" defaultValueBoolean="false" defaultValueNumeric="0">
-                <constraints nullable="false"/>
-            </column>
-            <column name="gmt_offset" type="float"/>
         </createTable>
     </changeSet>
 </databaseChangeLog>

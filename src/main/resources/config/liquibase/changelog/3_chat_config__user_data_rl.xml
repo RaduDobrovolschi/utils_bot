@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <changeSet id="3_chat_config__user_data_rl.xml-1" author="me">
+        <addForeignKeyConstraint baseColumnNames="chat_id"
+                                 baseTableName="user_data"
+                                 constraintName="fk_user_chat"
+                                 referencedColumnNames="id"
+                                 referencedTableName="chat_config"/>
+    </changeSet>
+</databaseChangeLog>

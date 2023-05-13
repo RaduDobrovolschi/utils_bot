@@ -27,6 +27,10 @@ public class ChatConfigService {
         getChatConfig(chatId).setTranslationTargetLang(language);
     }
 
+    public void updateGmtOffset(Long chatId, float offset) {
+        getChatConfig(chatId).setGmtOffset(offset);
+    }
+
     public ChatConfig save(ChatConfig chatConfig) {
         return chatConfigRepository.save(chatConfig);
     }

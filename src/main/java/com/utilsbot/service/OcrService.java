@@ -9,6 +9,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Optional;
@@ -57,7 +58,7 @@ public class OcrService {
                     new HttpEntity<>(body, headers),
                     OcrResponse.class
             ).getBody();
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error("Response error: {}", e.getMessage());
             e.printStackTrace();
         }

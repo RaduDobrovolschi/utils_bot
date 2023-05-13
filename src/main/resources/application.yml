@@ -1,9 +1,13 @@
 app:
   translation-api-url: ''
   ocr-api-key: ''
+  timezone-api-key: ''
   bot:
     token: ''
     username: ''
+
+cron:
+  expecting-input-cleanup: "*/5 * * * * *"
 
 spring:
   jackson:
@@ -26,9 +30,10 @@ spring:
         prepStmtCacheSqlLimit: 2048
         useServerPrepStmts: true
   jpa:
+#    show-sql: true
     open-in-view: false
     properties:
-      hibernate.format_sql: true
+#      hibernate.format_sql: true
       hibernate.jdbc.time_zone: UTC
       hibernate.id.new_generator_mappings: true
       #hibernate.connection.provider_disables_autocommit: true

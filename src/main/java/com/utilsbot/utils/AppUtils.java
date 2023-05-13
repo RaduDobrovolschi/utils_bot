@@ -2,6 +2,9 @@ package com.utilsbot.utils;
 
 import net.suuft.libretranslate.Language;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class AppUtils {
 
     private AppUtils() {}
@@ -13,5 +16,14 @@ public class AppUtils {
             }
         }
         throw new IllegalArgumentException("Invalid language code: " + code);
+    }
+
+    public static int getDataFromCallback(String prefix, String callbackData) {
+        Pattern pattern = Pattern.compile(prefix + "(\\d+)");
+        Matcher matcher = pattern.matcher(callbackData);
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        return 0;
     }
 }

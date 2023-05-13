@@ -6,8 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
-//on hold for now
-//@Service
+@Service
 public class NotificationService {
     private final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
@@ -20,6 +19,10 @@ public class NotificationService {
     @PostConstruct
     private void postConstruct() {
         //taskScheduler.schedule();
+    }
+
+    public void addNotification() {
+
     }
 
     public void scheduleNotification() {

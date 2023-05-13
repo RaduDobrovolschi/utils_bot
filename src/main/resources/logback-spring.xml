@@ -12,11 +12,17 @@
 
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
 
+<!--    <springProfile name="default">-->
+<!--        <logger name="org.springframework.boot" level="OFF"/>-->
+<!--    </springProfile>-->
+
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${user.home}/logs/UtilsBot.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logFile.%d{yyyy-MM-dd}.zip</fileNamePattern>
+        <file>${LOG_PATH}/UtilsBot.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/UtilsBot.%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
             <charset>utf-8</charset>
@@ -30,7 +36,7 @@
     </appender>
 
     <!-- logs for file -->
-    <logger name="com.utilsbot.UtilsbotApplication" level="INFO">
+    <logger name="com.utilsbot" level="INFO">
         <appender-ref ref="FILE_ASYNC"/>
     </logger>
     <logger name="javax.activation" level="WARN">

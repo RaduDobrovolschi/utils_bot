@@ -13,6 +13,9 @@ public class AppProperties {
     @NotEmpty
     private String ocrApiKey;
 
+    @NotEmpty
+    private String timezoneApiKey;
+
     private final Bot bot = new Bot();
 
     public Bot getBot() {
@@ -25,6 +28,14 @@ public class AppProperties {
 
     public void setOcrApiKey(String ocrApiKey) {
         this.ocrApiKey = ocrApiKey;
+    }
+
+    public String getTimezoneApiKey() {
+        return timezoneApiKey;
+    }
+
+    public void setTimezoneApiKey(String timezoneApiKey) {
+        this.timezoneApiKey = timezoneApiKey;
     }
 
     public String getTranslationApiUrl() {
