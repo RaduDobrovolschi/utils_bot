@@ -35,8 +35,9 @@ public enum MessagesEnum {
     LOCATION_FAIL("Failed to update time zone"),
     SEL_NOTIFY_MONTH("Please select notification month"),
     SEL_NOTIFY_DAY("Please select notification day"),
-    SEL_NOTIFY_HOUR("Please select notification hour"),
-    SEL_NOTIFY_MIN("Please select notification time in minutes");
+    SEL_NOTIFY_HOUR("Please select notification HOUR"),
+    SEL_NOTIFY_MIN("Please select notification time in MINUTES"),
+    NOTIFICATION_UPDATE("Notification scheduled for %s");
 
     private final String value;
 

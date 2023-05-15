@@ -8,10 +8,16 @@
 
     <changeSet id="1_create_chat_config.xml-1" author="me">
         <createTable tableName="notification">
-            <column name="id" type="bigint">
+            <column name="id" type="bigint" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="gmt_offset" type="float"/>
+            <column name="chat_id" type="bigint">
+                <constraints nullable="false"/>
+            </column>
+            <column name="custom_msg_id" type="bigint"/>
+            <column name="scheduled_for" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
     </changeSet>
 </databaseChangeLog>

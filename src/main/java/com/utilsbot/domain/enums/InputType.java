@@ -2,5 +2,7 @@ package com.utilsbot.domain.enums;
 
 public enum InputType {
     LOCATION_UPDATE,
-    NOTIFICATION_BUILD,
+    NF_BUILD,
+    NF_CUSTOM_MSG,
+    NF_UPDATE
 }

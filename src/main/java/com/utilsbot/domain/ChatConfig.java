@@ -1,14 +1,15 @@
 package com.utilsbot.domain;
 
-import jakarta.persistence.*;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import net.suuft.libretranslate.Language;
-import org.hibernate.annotations.*;
 import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.*;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -25,7 +26,7 @@ public class ChatConfig implements Serializable {
     @Column(name = "id")
     private Long id;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(name = "translation_target_lang")
     private Language translationTargetLang;
 
@@ -36,10 +37,16 @@ public class ChatConfig implements Serializable {
     private Float gmtOffset;
 
     @BatchSize(size = 25)
-    @Fetch(FetchMode.SELECT)
-    @OneToMany(mappedBy = "chatConfig", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+    @Fetch(FetchMode.SUBSELECT)
+    @OneToMany(mappedBy = "chatConfig", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "userData-list")
     private Set<UserData> userData = new HashSet<>();
+
+    @BatchSize(size = 5)
+    @Fetch(FetchMode.SUBSELECT)
+    @OneToMany(mappedBy = "chatConfig", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "notification-list")
+    private Set<Notification> notifications = new HashSet<>();
 
     public ChatConfig() {
     }
@@ -84,7 +91,16 @@ public class ChatConfig implements Serializable {
 
     public LocalDateTime getUserTime() {
         float offset = gmtOffset;
-        return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 60))).toLocalDateTime();
+        return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 100))).toLocalDateTime();
+    }
+
+    public LocalDate getUserDate() {
+        float offset = gmtOffset;
+        return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 100))).toLocalDate();
+    }
+
+    public boolean hasGtmOffset() {
+        return this.gmtOffset != null;
     }
 
     public void setGmtOffset(Float gmtOffset) {
@@ -97,6 +113,14 @@ public class ChatConfig implements Serializable {
 
     public void setUserData(Set<UserData> userData) {
         this.userData = userData;
+    }
+
+    public Set<Notification> getNotifications() {
+        return notifications;
+    }
+
+    public void setNotifications(Set<Notification> notifications) {
+        this.notifications = notifications;
     }
 
     @Override
@@ -115,9 +139,10 @@ public class ChatConfig implements Serializable {
     @Override
     public String toString() {
         return "ChatConfig{" +
-                "chatId=" + id +
+                "id=" + id +
                 ", translationTargetLang=" + translationTargetLang +
                 ", dadBot=" + dadBot +
+                ", gmtOffset=" + gmtOffset +
                 '}';
     }
 }

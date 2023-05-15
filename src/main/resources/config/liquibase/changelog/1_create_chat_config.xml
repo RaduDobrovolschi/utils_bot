@@ -11,13 +11,13 @@
             <column name="id" type="bigint">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="translation_target_lang" type="varchar(16)" defaultValue="NONE">
+            <column name="translation_target_lang" type="SMALLINT">
                 <constraints nullable="false"/>
             </column>
             <column name="dad_bot" type="boolean" defaultValueBoolean="false" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
-            <column name="gmt_offset" type="float"/>
+            <column name="gmt_offset" type="REAL"/>
         </createTable>
     </changeSet>
 </databaseChangeLog>

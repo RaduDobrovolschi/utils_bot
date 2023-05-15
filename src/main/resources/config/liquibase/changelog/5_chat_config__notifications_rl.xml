@@ -6,14 +6,11 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd
                         http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
 
-    <changeSet id="2_create_user_data.xml-1" author="me">
-        <createTable tableName="user_data">
-            <column name="user_id" type="bigint">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-            <column name="chat_id" type="bigint">
-                <constraints primaryKey="true" nullable="false"/>
-            </column>
-        </createTable>
+    <changeSet id="5_chat_config__notifications_rl.xml-1" author="me">
+        <addForeignKeyConstraint baseColumnNames="chat_id"
+                                 baseTableName="notification"
+                                 constraintName="fk_user_notifications"
+                                 referencedColumnNames="id"
+                                 referencedTableName="chat_config"/>
     </changeSet>
 </databaseChangeLog>

@@ -5,9 +5,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 
 import java.util.List;
-import java.util.Optional;
-
-import static com.utilsbot.utils.AppUtils.getDataFromCallback;
+import java.util.function.IntUnaryOperator;
 
 public class KeyboardHelper {
 
@@ -36,90 +34,23 @@ public class KeyboardHelper {
                 .build();
     }
 
-    public static void restoreHourSelection(InlineKeyboardMarkup markup, int hour) {
+    public static void updateHour(InlineKeyboardMarkup markup, IntUnaryOperator timeUpdate) {
         List<List<InlineKeyboardButton>> keyboard = markup.getKeyboard();
-        List<InlineKeyboardButton> firstRow = keyboard.get(0);
-        if (hour > 12) {
-            hour -= 12;
-            addSelection(firstRow.get(0));
-        } else {
-            addSelection(firstRow.get(1));
-        }
-        int row = hour/3;
-        int rounded = row * 3;
-        addSelection(keyboard.get(rounded == hour? row : 1 + row).get(rounded == hour? 2 : hour - rounded - 1));
+        InlineKeyboardButton inlineKeyboardButton = keyboard.get(0).get(1);
+        String text = inlineKeyboardButton.getText();
+        String[] split = text.split(":");
+        int hour = Integer.parseInt(split[0]);
+        hour = timeUpdate.applyAsInt(hour);
+        inlineKeyboardButton.setText(hour < 23 && hour >= 0? hour + ":" + split[1] : text);
     }
 
-    public static Optional<Integer> getHour(InlineKeyboardMarkup markup) {
+    public static void updateMinute(InlineKeyboardMarkup markup, IntUnaryOperator timeUpdate) {
         List<List<InlineKeyboardButton>> keyboard = markup.getKeyboard();
-        List<InlineKeyboardButton> firstRow = keyboard.get(0);
-        boolean isAm;
-        if (firstRow.get(0).getText().startsWith("-")) {
-            isAm = true;
-        } else if (firstRow.get(1).getText().startsWith("-")) {
-            isAm = false;
-        } else return Optional.empty();
-
-        for (int i = 1; i < 5; ++i) {
-            for (InlineKeyboardButton btn : keyboard.get(i)) {
-                if (btn.getText().startsWith("-")) {
-                    int hour = Integer.parseInt(btn.getText().replace("-", ""));
-                    return Optional.of(isAm? hour + 12 : hour);
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    public static void updateHour(InlineKeyboardMarkup markup, String callbackData) {
-        List<List<InlineKeyboardButton>> keyboard = markup.getKeyboard();
-        cleanFirstSelectedHour(keyboard);
-        int hour = getDataFromCallback("H_", callbackData);
-        int row = hour/3;
-        int rounded = row * 3;
-        addSelection(keyboard.get(rounded == hour? row : 1 + row).get(rounded == hour? 2 : hour - rounded - 1));
-    }
-
-    private static void cleanFirstSelectedHour(List<List<InlineKeyboardButton>> keyboard) {
-        for (int i = 1; i < 5; ++i) {
-            for (InlineKeyboardButton key : keyboard.get(i)) {
-                String text = key.getText();
-                if (text.startsWith("-")) {
-                    key.setText(text.replace("-", ""));
-                    return;
-                }
-            }
-        }
-    }
-
-    public static void updateAmPm(InlineKeyboardMarkup markup, String callbackData) {
-        if (callbackData.contains("AM")) {
-            switchSelectByRow(0, markup, 0);
-        } else if (callbackData.contains("PM")) {
-            switchSelectByRow(0, markup, 1);
-        }
-    }
-
-    public static void switchSelectByRow(int row, InlineKeyboardMarkup markup, int selectId) {
-        List<List<InlineKeyboardButton>> keyboard = markup.getKeyboard();
-        List<InlineKeyboardButton> inlineKeyboardButtons = keyboard.get(row);
-        cleanMarkupSingle(inlineKeyboardButtons);
-        InlineKeyboardButton inlineKeyboardButton = inlineKeyboardButtons.get(selectId);
-        addSelection(inlineKeyboardButton);
-    }
-
-    public static void cleanMarkupSingle(List<InlineKeyboardButton> keys) {
-        for (InlineKeyboardButton key : keys) {
-            String text = key.getText();
-            if (text.startsWith("-")) {
-                key.setText(text.replace("-", ""));
-                return;
-            }
-        }
-    }
-
-    public static void addSelection(InlineKeyboardButton btn) {
-        String text = btn.getText();
-        btn.setText("-" + text + "-");
+        InlineKeyboardButton inlineKeyboardButton = keyboard.get(0).get(1);
+        String text = inlineKeyboardButton.getText();
+        String[] split = text.split(":");
+        int minute = Integer.parseInt(split[1]);
+        minute = timeUpdate.applyAsInt(minute);
+        inlineKeyboardButton.setText(minute < 60 && minute >= 0? split[0] + ":" + (minute < 10 ? "0" + minute : minute) : text);
     }
 }

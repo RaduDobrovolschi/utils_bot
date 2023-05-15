@@ -1,26 +1,28 @@
 package com.utilsbot.domain;
 
 import jakarta.persistence.*;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.annotations.*;
 import org.hibernate.annotations.Cache;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 @Entity
 @Table(name = "user_data")
 @Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
-public class UserData implements Serializable {
+@IdClass(UserDataIds.class)
+public class UserData {
 
     @Id
     @Column(name = "user_id")
     private Long userId;
 
+    @Id
     @NotNull
-    @ManyToOne(optional = false)
+    @Fetch(FetchMode.SELECT)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name="chat_id", nullable = false)
     private ChatConfig chatConfig;
 

@@ -10,6 +10,7 @@ import com.utilsbot.domain.enums.TimeUnits;
 import com.utilsbot.service.*;
 import com.utilsbot.service.dto.ExpectingInputDto;
 import com.utilsbot.service.dto.LocationResponseDTO;
+import com.utilsbot.service.dto.ResponseMsgDataDTO;
 import jakarta.annotation.PostConstruct;
 import net.suuft.libretranslate.Language;
 import net.suuft.libretranslate.Translator;
@@ -32,16 +33,20 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 
+import static com.utilsbot.domain.enums.InputType.NF_BUILD;
+import static com.utilsbot.domain.enums.InputType.NF_UPDATE;
 import static com.utilsbot.domain.enums.MessagesEnum.*;
 import static com.utilsbot.keyboard.CustomKeyboards.*;
-import static com.utilsbot.keyboard.KeyboardHelper.*;
-import static com.utilsbot.utils.AppUtils.fromCode;
-import static com.utilsbot.utils.AppUtils.getDataFromCallback;
+import static com.utilsbot.keyboard.KeyboardHelper.updateHour;
+import static com.utilsbot.keyboard.KeyboardHelper.updateMinute;
+import static com.utilsbot.utils.AppUtils.*;
 
 /*
  *
@@ -61,6 +66,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     private final AppProperties appProperties;
     private final ChatConfigService chatConfigService;
     private final UserDataService userDataService;
+    private final NotificationService notificationService;
     private final ExpectingInputService expectingInputService;
     private final LocationService locationService;
     private final OcrService ocrService;
@@ -69,6 +75,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     public UtilsBot(AppProperties appProperties,
                     ChatConfigService chatConfigService,
                     UserDataService userDataService,
+                    NotificationService notificationService,
                     ExpectingInputService expectingInputService,
                     LocationService locationService,
                     OcrService ocrService,
@@ -77,6 +84,7 @@ public class UtilsBot extends TelegramLongPollingBot {
         this.appProperties = appProperties;
         this.chatConfigService = chatConfigService;
         this.userDataService = userDataService;
+        this.notificationService = notificationService;
         this.expectingInputService = expectingInputService;
         this.locationService = locationService;
         this.ocrService = ocrService;
@@ -133,10 +141,6 @@ public class UtilsBot extends TelegramLongPollingBot {
                 if (message.hasPhoto()) {
                     handlePhoto(message);
                 }
-                //todo mb implement later
-//                if (message.getChat().getType().equals("private") && message.hasLocation()) {
-//                    handleLocation(message);
-//                }
             } else if (update.hasCallbackQuery()) {
                 handleCallbackQuery(update);
             }
@@ -226,14 +230,13 @@ public class UtilsBot extends TelegramLongPollingBot {
         Message message = update.getCallbackQuery().getMessage();
         String callbackData = update.getCallbackQuery().getData();
 
-        InlineKeyboardMarkup replyMarkup = null;
-        String responseMsg = null;
-        CallbackDataEnum callbackDataEnum = null;
-
         if (callbackData.startsWith("NF_")) {
             handleCalendarCallback(callbackData.substring(3), update);
             return;
         }
+
+        CallbackDataEnum callbackDataEnum = null;
+        ResponseMsgDataDTO responseMsg = null;
 
         try {
             callbackDataEnum = CallbackDataEnum.valueOf(callbackData);
@@ -242,46 +245,40 @@ public class UtilsBot extends TelegramLongPollingBot {
             ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
             chatConfig.setTranslationTargetLang(language);
             chatConfigService.save(chatConfig);
-            responseMsg = MessagesEnum.START_MESSAGE.getValue();
-            replyMarkup = infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang());
+            responseMsg = new ResponseMsgDataDTO(
+                    MessagesEnum.START_MESSAGE.getValue(),
+                    infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang())
+            );
+            answerCallbackQuery("Translation language set to " + language, update.getCallbackQuery());
         }
 
         if (callbackDataEnum != null) {
             switch (callbackDataEnum) {
                 case MAIN_MENU -> {
                     ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
-                    responseMsg = MessagesEnum.START_MESSAGE.getValue();
-                    replyMarkup = infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang());
+                    responseMsg = new ResponseMsgDataDTO(
+                            MessagesEnum.START_MESSAGE.getValue(),
+                            infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang())
+                    );
                 }
                 case TRANSLATION_SELECTOR -> {
                     ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
-                    replyMarkup = getKeyboard(LANG_SELECT_MSG);
-                    responseMsg = String.format(LANG_SELECT_MSG.getValue(), chatConfig.getTranslationTargetLang().getCode());
+                    responseMsg = new ResponseMsgDataDTO(
+                            String.format(LANG_SELECT_MSG.getValue(),
+                            chatConfig.getTranslationTargetLang().getCode()), getKeyboard(LANG_SELECT_MSG)
+                    );
                 }
                 case DAD_BOT -> {
                     ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                     chatConfig.toggleDadBot();
                     chatConfigService.save(chatConfig);
-                    responseMsg = message.getText();
-                    replyMarkup = infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang());
-                    //todo add AnswerCallbackQuery
+                    boolean dadBot = chatConfig.getDadBot();
+                    responseMsg = new ResponseMsgDataDTO(
+                            message.getText(),
+                            infoKeyboard(dadBot, chatConfig.getTranslationTargetLang())
+                    );
+                    answerCallbackQuery("Dad bot " + (dadBot? "enabled" : "disabled"), update.getCallbackQuery());
                 }
-//                case TIME_REGION_UPDATE_CORDS -> {
-//                    User from = update.getCallbackQuery().getFrom();
-//                    try {
-//                        executeAsync(
-//                                SendMessage.builder()
-//                                        .text(SHARE_LOCATION.getValue())
-//                                        .chatId(from.getId())
-//                                        .replyMarkup(requestLocationKeyboard)
-//                                        .build()
-//                        );
-//                        chatConfigService.addExpectingInput(message.getChatId(), from.getUserName());
-//                    } catch (TelegramApiException e) {
-//                        log.error("failed to send ReplyKeyboardMarkup {}", update);
-//                        throw new RuntimeException(e);
-//                    }
-//                }
                 case TIME_REGION_UPDATE_NAME -> {
                     User from = update.getCallbackQuery().getFrom();
                     SendMessage.SendMessageBuilder sendMessageBuilder = SendMessage.builder()
@@ -299,165 +296,196 @@ public class UtilsBot extends TelegramLongPollingBot {
                             new ExpectingInputDto(from.getId(), message.getChatId(), InputType.LOCATION_UPDATE, sentMsg)
                     );
                 }
-                case NOTIFICATIONS_CONFIG -> {
-                    responseMsg = EVERYONE_CONFIG.getValue();
-                    replyMarkup = notificationConfig();
-                }
-                case PING_EVERYONE -> responseMsg = handleEveryone(message);
-                case  UPDATE_USER_GROUP -> {
+                case NOTIFICATIONS_CONFIG -> responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
+                case PING_EVERYONE -> responseMsg = new ResponseMsgDataDTO(handleEveryone(message));
+                case UPDATE_USER_GROUP -> {
                     Optional<UserData> userData = userDataService.handleCommand(message.getChatId(), update.getCallbackQuery().getFrom().getId());
                     answerCallbackQuery("notifications " + (userData.isPresent()? "enabled" : "disabled"), update.getCallbackQuery());
                 }
-                case  CANCEL_REGION_UPDATE -> {
+                case CANCEL_REGION_UPDATE -> {
                     expectingInputService.removeExpectingInput(message.getChatId());
                     deleteMsg(message);
                 }
                 case ADD_NOTIFICATION -> {
-                    User from = update.getCallbackQuery().getFrom();
-                    responseMsg = SEL_NOTIFY_DAY.getValue();
-                    int month;
-                    int year;
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(from.getId());
-                    if (expectingInput != null && expectingInput.inputType().equals(InputType.NOTIFICATION_BUILD) &&
-                        expectingInput.notificationTimeData().isPresent()) {
-
-                        EnumMap<TimeUnits, Integer> timeUnitsIntegerEnumMap = expectingInput.notificationTimeData().get();
-                        month = timeUnitsIntegerEnumMap.get(TimeUnits.MONTH);
-                        year = timeUnitsIntegerEnumMap.get(TimeUnits.YEAR);
-                    } else {
-                        Calendar calendar = Calendar.getInstance();
-                        month = calendar.get(Calendar.MONTH);
-                        year = calendar.get(Calendar.YEAR);
-                        ++month;
-                        expectingInputService.addExpectingInput(
-                                new ExpectingInputDto(from.getId(), message.getChatId(), InputType.NOTIFICATION_BUILD, year, month)
-                        );
-                    }
-                    replyMarkup = dayOfMonthKeyboard(year, month);
-                }
-                case SELECT_MONTH -> {
-                    responseMsg = SEL_NOTIFY_MONTH.getValue();
-                    replyMarkup = monthsKeyboard();
-                }
-                case UPDATE_HOUR -> {
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(update.getCallbackQuery().getFrom().getId());
-                    if (expectingInput != null && expectingInput.inputType().equals(InputType.NOTIFICATION_BUILD) &&
-                        expectingInput.notificationTimeData().isPresent() && expectingInput.notificationTimeData().get().get(TimeUnits.HOUR) != null) {
-                        Integer hour = expectingInput.notificationTimeData().get().get(TimeUnits.HOUR);
-                        replyMarkup = new InlineKeyboardMarkup(getKeyboard(SEL_NOTIFY_HOUR).getKeyboard());
-                        restoreHourSelection(replyMarkup, hour);
-                        responseMsg = SEL_NOTIFY_HOUR.getValue();
-
-                    } else {
-                        answerCallbackQuery("failed to build notification", update.getCallbackQuery());
-                        responseMsg = EVERYONE_CONFIG.getValue();
-                        replyMarkup = notificationConfig();
-                    }
-                }
-                case SELECT_MIN -> {
-                    Optional<Integer> optHour = getHour(message.getReplyMarkup());
-                    if (optHour.isEmpty()) {
-                        answerCallbackQuery("please select the time", update.getCallbackQuery());
+                    ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+                    if (!chatConfig.hasGtmOffset()) {
+                        answerCallbackQuery("please set ur time region first", update.getCallbackQuery());
                         return;
                     }
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(update.getCallbackQuery().getFrom().getId());
 
-                    if (expectingInput != null && expectingInput.inputType().equals(InputType.NOTIFICATION_BUILD) &&
-                        expectingInput.notificationTimeData().isPresent()) {
-
-                        EnumMap<TimeUnits, Integer> timeUnitsIntegerEnumMap = expectingInput.notificationTimeData().get();
-                        ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
-
-                        Integer hour = optHour.get();
-                        LocalDateTime inputTime = LocalDateTime.of(
-                                timeUnitsIntegerEnumMap.get(TimeUnits.YEAR),
-                                timeUnitsIntegerEnumMap.get(TimeUnits.MONTH),
-                                timeUnitsIntegerEnumMap.get(TimeUnits.DAY),
-                                hour,
-                                0
+                    if (message.getText().equals(SEL_NOTIFY_MIN.getValue())) {
+                        responseMsg = new ResponseMsgDataDTO(
+                            SEL_NOTIFY_HOUR.getValue(),
+                            message.getReplyMarkup()
                         );
-                        LocalDateTime userTime = chatConfig.getUserTime();
-                        if (inputTime.isBefore(userTime)) {
-                            answerCallbackQuery("please select future time", update.getCallbackQuery());
-                            return;
-                        }
-
-                        timeUnitsIntegerEnumMap.put(TimeUnits.HOUR, hour);
-
-                        responseMsg = SEL_NOTIFY_MIN.getValue();
-                        replyMarkup = minuteKeyboard(hour, 0);
                     } else {
-                        answerCallbackQuery("failed to build notification", update.getCallbackQuery());
-                        responseMsg = EVERYONE_CONFIG.getValue();
-                        replyMarkup = notificationConfig();
+                        int month;
+                        int year;
+                        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(update.getCallbackQuery().getFrom().getId());
+                        if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
+                                expectingInput.notificationTimeData().isPresent()) {
+
+                            EnumMap<TimeUnits, Integer> timeUnitsIntegerEnumMap = expectingInput.notificationTimeData().get();
+                            month = timeUnitsIntegerEnumMap.get(TimeUnits.MONTH);
+                            year = timeUnitsIntegerEnumMap.get(TimeUnits.YEAR);
+                        } else {
+                            Calendar calendar = Calendar.getInstance();
+                            month = calendar.get(Calendar.MONTH);
+                            year = calendar.get(Calendar.YEAR);
+                            ++month;
+                            expectingInputService.addExpectingInput(
+                                    new ExpectingInputDto(update.getCallbackQuery(), NF_BUILD, year, month)
+                            );
+                        }
+                        responseMsg = new ResponseMsgDataDTO(
+                                SEL_NOTIFY_DAY.getValue(),
+                                dayOfMonthKeyboard(year, month)
+                        );
                     }
+                }
+                case SELECT_MONTH -> responseMsg = new ResponseMsgDataDTO(
+                        SEL_NOTIFY_MONTH.getValue(),
+                        monthsKeyboard()
+                );
+                case T_DEC -> responseMsg = handleTimeKeyboardUpdate(message, time -> --time);
+                case T_INC -> responseMsg = handleTimeKeyboardUpdate(message, time -> ++time);
+                case T_ADD_5 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time + 5);
+                case T_SUB_5 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time - 5);
+                case T_ADD_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time + 10);
+                case T_SUB_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time - 10);
+                case NEXT_UPDATE_TIME -> {
+                    if (message.getText().equals(SEL_NOTIFY_HOUR.getValue())) {
+                        responseMsg = new ResponseMsgDataDTO(
+                                SEL_NOTIFY_MIN.getValue(),
+                                message.getReplyMarkup()
+                        );
+                    } else {
+                        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                        if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
+                            expectingInput.notificationTimeData().isPresent()) {
+
+                            EnumMap<TimeUnits, Integer> timeUnitsEnumMap = expectingInput.notificationTimeData().get();
+                            ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+                            String[] split = message.getReplyMarkup().getKeyboard().get(0).get(1).getText().split(":");
+
+                            LocalDateTime inputTime = LocalDateTime.of(
+                                    timeUnitsEnumMap.get(TimeUnits.YEAR),
+                                    timeUnitsEnumMap.get(TimeUnits.MONTH),
+                                    timeUnitsEnumMap.get(TimeUnits.DAY),
+                                    Integer.parseInt(split[0]),
+                                    Integer.parseInt(split[1])
+                            );
+                            LocalDateTime userTime = chatConfig.getUserTime();
+
+                            if (userTime.isAfter(inputTime)) {
+                                answerCallbackQuery("notification time can't be in the past", update.getCallbackQuery());
+                                return;
+                            } else {
+                                notificationService.addNotification(inputTime, chatConfig.getId());
+                                answerCallbackQuery("notification added successfully", update.getCallbackQuery());
+                            }
+                        }
+                        responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
+                    }
+                }
+                case DELETE_NF -> {
+                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    if (expectingInput != null && expectingInput.inputType().equals(InputType.NF_UPDATE) &&
+                        expectingInput.notificationId().isPresent()) {
+                        Long nId = expectingInput.notificationId().get();
+                        notificationService.delete(nId);
+                        answerCallbackQuery("notification deleted successfully", update.getCallbackQuery());
+                    }
+                    responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 }
                 case EXIT -> deleteMsg(message);
                 case IGNORE -> { return; }
             }
         }
 
-        genericUpdateMsg(message, responseMsg, replyMarkup);
+        genericUpdateMsg(message, responseMsg);
     }
 
-    //unmaintainable garbage
+    private ResponseMsgDataDTO handleTimeKeyboardUpdate(Message message, IntUnaryOperator timeUpdate) {
+        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+        if (expectingInput != null &&
+           (expectingInput.inputType().equals(NF_BUILD) || expectingInput.inputType().equals(NF_UPDATE)) &&
+            expectingInput.notificationTimeData().isPresent()) {
+
+            InlineKeyboardMarkup replyMarkup = message.getReplyMarkup();
+            if (message.getText().equals(SEL_NOTIFY_HOUR.getValue())) {
+                updateHour(replyMarkup, timeUpdate);
+                return new ResponseMsgDataDTO(
+                        SEL_NOTIFY_HOUR.getValue(),
+                        replyMarkup
+                );
+            } else {
+                updateMinute(replyMarkup, timeUpdate);
+                return new ResponseMsgDataDTO(
+                        SEL_NOTIFY_MIN.getValue(),
+                        replyMarkup
+                );
+            }
+        } else
+            return chatConfigService.createNotificationsMsg(message.getChatId(), this);
+    }
+
     private void handleCalendarCallback(String callbackData, Update update) {
         Message message = update.getCallbackQuery().getMessage();
 
-        String responseMsg = null;
-        InlineKeyboardMarkup replyMarkup = null;
-
+        ResponseMsgDataDTO responseMsg = null;
         boolean errorFlag = false;
-        String warnMsg = null;
 
         if (callbackData.startsWith("Y_") && !callbackData.contains("D_")) {
             int year = getDataFromCallback("Y_", callbackData);
             int month = getDataFromCallback("M_", callbackData);
 
-            responseMsg = SEL_NOTIFY_DAY.getValue();
-            replyMarkup = dayOfMonthKeyboard(year, month);
-
+            responseMsg = new ResponseMsgDataDTO(
+                SEL_NOTIFY_DAY.getValue(),
+                dayOfMonthKeyboard(year, month)
+            );
         } else if (callbackData.startsWith("Y_")) {
             int year = getDataFromCallback("Y_", callbackData);
             int month = getDataFromCallback("M_", callbackData);
             int day = getDataFromCallback("D_", callbackData);
 
+            LocalDate inputDate = LocalDate.of(year, month, day);
+            ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+            LocalDate userDate = chatConfig.getUserDate();
+
+            if (userDate.isAfter(inputDate)) {
+                answerCallbackQuery("can't chose past date", update.getCallbackQuery());
+                return;
+            }
+
             ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
-            if (expectingInput != null && expectingInput.inputType().equals(InputType.NOTIFICATION_BUILD)) {
+            if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD)) {
                 errorFlag = !expectingInput.updateNotificationTimeData(TimeUnits.YEAR, year) ||
                             !expectingInput.updateNotificationTimeData(TimeUnits.MONTH, month) ||
                             !expectingInput.updateNotificationTimeData(TimeUnits.DAY, day);
             } else errorFlag = true;
 
-            responseMsg = SEL_NOTIFY_HOUR.getValue();
-            replyMarkup = getKeyboard(SEL_NOTIFY_HOUR);
-        } else if (callbackData.startsWith("P_")) {
-            responseMsg = SEL_NOTIFY_HOUR.getValue();
-            replyMarkup = message.getReplyMarkup();
-            updateAmPm(replyMarkup, callbackData);
-        } else if (callbackData.startsWith("H_")) {
-            responseMsg = SEL_NOTIFY_HOUR.getValue();
-            replyMarkup = message.getReplyMarkup();
-            updateHour(replyMarkup, callbackData);
-        } else if (callbackData.startsWith("MI_")) {
-
-        }
-
-
-        if (warnMsg != null) {
-            answerCallbackQuery(warnMsg, update.getCallbackQuery());
-            return;
+            LocalDateTime userTime = chatConfig.getUserTime();
+            responseMsg = new ResponseMsgDataDTO(
+                    SEL_NOTIFY_HOUR.getValue(),
+                    timeKeyboard(userTime.getHour(), userTime.getMinute())
+            );
+        } else if (callbackData.startsWith("ID_")) {
+            long id = getIdFromCallback("ID_", callbackData);
+            responseMsg = notificationService.createEditNotificationMsg(id);
+            if (responseMsg != null) {
+                expectingInputService.addExpectingInput(
+                        new ExpectingInputDto(update.getCallbackQuery(), InputType.NF_UPDATE, id)
+                );
+            }
         }
 
         if (errorFlag) {
             answerCallbackQuery("failed to build notification", update.getCallbackQuery());
-            responseMsg = EVERYONE_CONFIG.getValue();
-            replyMarkup = notificationConfig();
+            responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
         }
-        genericUpdateMsg(message, responseMsg, replyMarkup);
+        genericUpdateMsg(message, responseMsg);
     }
-
-
 
     private void handleTextMessage(String text, Update update) {
         Message message = update.getMessage();
@@ -551,29 +579,6 @@ public class UtilsBot extends TelegramLongPollingBot {
         expectingInputService.removeExpectingInput(message.getChatId());
     }
 
-
-//    private void handleLocation(Message message) {
-//        if (message.getReplyToMessage() != null &&
-//            message.getReplyToMessage().getFrom().getUserName().equals(appProperties.getBot().getUsername()) &&
-//            message.getReplyToMessage().getText().equals(SHARE_LOCATION.getValue())) {
-//
-//            Location location = message.getLocation();
-//
-//
-//            try {
-//                executeAsync(
-//                        SendMessage.builder()
-//                                .text("")
-//                                .chatId(message.getChatId())
-//                                .replyMarkup(replyKeyboardRemove)
-//                                .build()
-//                );
-//            } catch (TelegramApiException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    }
-
     private String handleEveryone(Message message) {
         String errorMsg = null;
         if (message.getChat().getType().equals("private"))
@@ -609,7 +614,8 @@ public class UtilsBot extends TelegramLongPollingBot {
                 fileData = getFileData(message);
             } catch (TelegramApiException | IOException e) {
                 log.error("failed to load file, message: {}", message);
-                throw new RuntimeException(e);
+                e.printStackTrace();
+                return;
             }
             String responseMsg = "Failed to process image";
             if (fileData.length > 0) {
@@ -629,7 +635,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 );
             } catch (TelegramApiException | IllegalArgumentException e) {
                 log.error("failed to send response message, message {}", message);
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         }
     }
@@ -646,6 +652,11 @@ public class UtilsBot extends TelegramLongPollingBot {
             return Files.readAllBytes(downloadFile(execute.getFilePath()).toPath());
         }
         throw new TelegramApiException("No photos found");
+    }
+
+    private void genericUpdateMsg(Message message, ResponseMsgDataDTO responseMsgDataDTO) {
+        if (responseMsgDataDTO != null && message != null)
+            genericUpdateMsg(message, responseMsgDataDTO.responseMsg(), responseMsgDataDTO.replyMarkup());
     }
 
     private void genericUpdateMsg(Message msg, String text, InlineKeyboardMarkup replyMarkup) {
@@ -703,6 +714,22 @@ public class UtilsBot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             log.error("failed to AnswerCallbackQuery, previous query {}", prevQuery);
         }
+    }
+
+    public String getUsername(UserData user) {
+        try {
+            User result = execute(
+                    GetChatMember.builder()
+                            .chatId(user.getChatConfig().getId())
+                            .userId(user.getUserId())
+                            .build()
+            ).getUser();
+            return result.getUserName() == null ? result.getFirstName() : result.getUserName();
+        } catch (TelegramApiException e) {
+            log.error("failed to get user: {}", user);
+            e.printStackTrace();
+        }
+        return "";
     }
 
     public static void addUserMentions(SendMessage.SendMessageBuilder sendMessageBuilder, Function<StringBuilder, String> stringFormat, User... users) {

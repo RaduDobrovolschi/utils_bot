@@ -1,15 +1,10 @@
 package com.utilsbot.keyboard;
 
 import com.utilsbot.domain.enums.MessagesEnum;
-import com.utilsbot.domain.enums.ReplyKeyboardMarkupData;
 import net.suuft.libretranslate.Language;
 import org.apache.commons.collections4.ListUtils;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.time.LocalDate;
 import java.time.Month;
@@ -24,13 +19,11 @@ import static com.utilsbot.keyboard.KeyboardHelper.emptyBtn;
 public class CustomKeyboards {
 
     private static final EnumMap<MessagesEnum, InlineKeyboardMarkup> keyboardsMap = new EnumMap<>(MessagesEnum.class);
-//    public static final ReplyKeyboardMarkup requestLocationKeyboard = requestLocationKeyboard();
-//    public static final ReplyKeyboardRemove replyKeyboardRemove = emptyKeyboard();
 
     static {
         keyboardsMap.put(LANG_SELECT_MSG, languageSelectionKeyboard());
         keyboardsMap.put(REQUEST_LOCATION, cancelRegionUpdate());
-        keyboardsMap.put(SEL_NOTIFY_HOUR, hourKeyboard());
+        keyboardsMap.put(NOTIFICATION_UPDATE, updateNotification());
     }
 
     private CustomKeyboards() {}
@@ -60,21 +53,22 @@ public class CustomKeyboards {
     }
 
 
-    public static InlineKeyboardMarkup notificationConfig() {
-        return InlineKeyboardMarkup.builder()
-                .keyboard(
-                        List.of(
-                                List.of(
-                                        createBtn("Ping everyone now", PING_EVERYONE),
-                                        createBtn("toggle notifications", UPDATE_USER_GROUP)
-                                ),
-                                List.of(createBtn("+ New notification", ADD_NOTIFICATION)),
-                                List.of(
-                                        createBtn("Back", MAIN_MENU),
-                                        createBtn("Update time region", TIME_REGION_UPDATE_NAME)
-                                )
-                        )
+    public static InlineKeyboardMarkup notificationConfig(List<InlineKeyboardButton> notifications) {
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>(List.of(
+                List.of(
+                        createBtn("Ping everyone now", PING_EVERYONE),
+                        createBtn("toggle notifications", UPDATE_USER_GROUP)
                 )
+        ));
+        notifications.forEach(i -> keyboard.add(List.of(i)));
+        keyboard.add(
+                List.of(
+                    createBtn("Back", MAIN_MENU),
+                    createBtn("Update time region", TIME_REGION_UPDATE_NAME)
+            )
+        );
+        return InlineKeyboardMarkup.builder()
+                .keyboard(keyboard)
                 .build();
     }
 
@@ -181,91 +175,45 @@ public class CustomKeyboards {
                 .build();
     }
 
-    private static InlineKeyboardMarkup hourKeyboard() {
+    public static InlineKeyboardMarkup timeKeyboard(int h, int m) {
         return InlineKeyboardMarkup.builder()
                 .keyboard(
                         List.of(
                                 List.of(
-                                        createBtn("AM", NF_P_AM),
-                                        createBtn("PM", NF_P_PM)
+                                        createBtn("--", T_DEC),
+                                        createBtn( h + ":" + (m < 10? "0" : "") + m, T_MANUAL_INPUT),
+                                        createBtn("++", T_INC)
                                 ),
                                 List.of(
-                                        createBtn("1", NF_H_1),
-                                        createBtn("2", NF_H_2),
-                                        createBtn("3", NF_H_3)
-                                ),
-                                List.of(
-                                        createBtn("4", NF_H_4),
-                                        createBtn("5", NF_H_5),
-                                        createBtn("6", NF_H_6)
-                                ),
-                                List.of(
-                                        createBtn("7", NF_H_7),
-                                        createBtn("8", NF_H_8),
-                                        createBtn("9", NF_H_9)
-                                ),
-                                List.of(
-                                        createBtn("10", NF_H_10),
-                                        createBtn("11", NF_H_11),
-                                        createBtn("12", NF_H_12)
+                                        createBtn("-10", T_SUB_10),
+                                        createBtn("-5", T_SUB_5),
+                                        createBtn("+5", T_ADD_5),
+                                        createBtn("+10", T_ADD_10)
                                 ),
                                 List.of(
                                         createBtn("Back", ADD_NOTIFICATION),
-                                        createBtn("Next", SELECT_MIN)
+                                        createBtn("Next", NEXT_UPDATE_TIME)
                                 )
                         )
                 )
                 .build();
     }
 
-    public static InlineKeyboardMarkup minuteKeyboard(int h, int m) {
+    public static InlineKeyboardMarkup updateNotification() {
         return InlineKeyboardMarkup.builder()
                 .keyboard(
                         List.of(
                                 List.of(
-                                        createBtn("--", MI_DEC),
-                                        createBtn(h + ":" + (m < 10? "0" : "") + m + (h > 12? " am" : " pm"), MI_MANUAL_INPUT),
-                                        createBtn("++", MI_INC)
+                                        createBtn("Add custom msg", ADD_NF_CUSTOM_MSG)
                                 ),
                                 List.of(
-                                        createBtn("-10", MI_SUB_10),
-                                        createBtn("-5", MI_SUB_5),
-                                        createBtn("+5", MI_ADD_5),
-                                        createBtn("+10", MI_ADD_10)
+                                        createBtn("delete notification", DELETE_NF)
                                 ),
                                 List.of(
-                                        createBtn("Back", UPDATE_HOUR),
-                                        createBtn("Next", UPDATE_NOTIFICATION)
+                                        createBtn("Back", NOTIFICATIONS_CONFIG)
                                 )
                         )
                 )
-                .build();
-    }
-
-    private static ReplyKeyboardMarkup requestLocationKeyboard() {
-        return ReplyKeyboardMarkup.builder()
-                .keyboard(
-                        List.of(
-                                new KeyboardRow(
-                                        List.of(
-                                                KeyboardButton.builder()
-                                                        .text(ReplyKeyboardMarkupData.SET_TIME_ZONE.getValue())
-                                                        .requestLocation(true)
-                                                        .build()
-                                        )
-                                )
-                        )
-                )
-                .resizeKeyboard(true)
-                .oneTimeKeyboard(true)
-                .selective(true)
-                .build();
-    }
-
-    private static ReplyKeyboardRemove emptyKeyboard() {
-        return ReplyKeyboardRemove.builder()
-                .removeKeyboard(true)
-                .selective(true)
                 .build();
     }
 

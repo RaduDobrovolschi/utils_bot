@@ -26,4 +26,13 @@ public class AppUtils {
         }
         return 0;
     }
+
+    public static long getIdFromCallback(String prefix, String callbackData) {
+        Pattern pattern = Pattern.compile(prefix + "(\\d+)");
+        Matcher matcher = pattern.matcher(callbackData);
+        if (matcher.find()) {
+            return Long.parseLong(matcher.group(1));
+        }
+        return 0;
+    }
 }

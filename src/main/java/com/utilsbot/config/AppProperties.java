@@ -53,6 +53,9 @@ public class AppProperties {
         @NotEmpty
         private String username;
 
+        @NotEmpty
+        private int notificationsLimit;
+
         public String getToken() {
             return token;
         }
@@ -67,6 +70,14 @@ public class AppProperties {
 
         public void setUsername(String username) {
             this.username = username;
+        }
+
+        public int getNotificationsLimit() {
+            return notificationsLimit;
+        }
+
+        public void setNotificationsLimit(int notificationsLimit) {
+            this.notificationsLimit = notificationsLimit;
         }
     }
 }

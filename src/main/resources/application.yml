@@ -5,6 +5,7 @@ app:
   bot:
     token: ''
     username: ''
+    notifications-limit: 5
 
 cron:
   expecting-input-cleanup: "*/5 * * * * *"
@@ -29,6 +30,10 @@ spring:
         prepStmtCacheSize: 250
         prepStmtCacheSqlLimit: 2048
         useServerPrepStmts: true
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
   jpa:
 #    show-sql: true
     open-in-view: false

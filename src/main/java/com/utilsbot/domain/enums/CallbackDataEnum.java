@@ -15,31 +15,16 @@ public enum CallbackDataEnum {
     SELECT_MONTH,
     SELECT_MIN,
     IGNORE,
-    UPDATE_HOUR,
-    UPDATE_NOTIFICATION,
+    NEXT_UPDATE_TIME,
+    ADD_NF_CUSTOM_MSG,
+    DELETE_NF,
 
-    // --hour select--
-    NF_P_AM,
-    NF_P_PM,
-    NF_H_1,
-    NF_H_2,
-    NF_H_3,
-    NF_H_4,
-    NF_H_5,
-    NF_H_6,
-    NF_H_7,
-    NF_H_8,
-    NF_H_9,
-    NF_H_10,
-    NF_H_11,
-    NF_H_12,
-
-    // --minute select--
-    MI_INC,
-    MI_DEC,
-    MI_ADD_5,
-    MI_SUB_5,
-    MI_ADD_10,
-    MI_SUB_10,
-    MI_MANUAL_INPUT
+    // --time select--
+    T_INC,
+    T_DEC,
+    T_ADD_5,
+    T_SUB_5,
+    T_ADD_10,
+    T_SUB_10,
+    T_MANUAL_INPUT
 }
