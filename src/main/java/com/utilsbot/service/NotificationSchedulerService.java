@@ -53,14 +53,11 @@ public class NotificationSchedulerService {
     public void scheduleNotifications() {
         List<NotificationToScheduleDto> notificationsToSchedule = jdbcTemplate.query(
                 """
-                        select chat_id, custom_msg_id, scheduled_for from
-                            (select chat_id, gmt_offset, custom_msg_id, scheduled_for,
-                                    apply_offset(scheduled_for, gmt_offset) as zoned_date
+                        select chat_id, custom_msg_id, scheduled_for
                                 from chat_config c
                                     inner join notification n on n.chat_id = c.id
                                     where gmt_offset is not null
-                            ) as cn
-                        where zoned_date::date = apply_offset(current_timestamp::timestamp without time zone, gmt_offset)::date;
+                                    and scheduled_for::date = current_date;
                         """, (rs, rowNum) -> new NotificationToScheduleDto(rs.getLong(1), rs.getLong(2), rs.getTimestamp(3).toInstant())
         );
         log.info("scheduling {} notifications...", notificationsToSchedule.size());

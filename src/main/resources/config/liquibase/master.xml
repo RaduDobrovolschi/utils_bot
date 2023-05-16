@@ -9,6 +9,5 @@
     <include file="config/liquibase/changelog/3_chat_config__user_data_rl.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/4_create_notifications.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/5_chat_config__notifications_rl.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/6_create_apply_offset_fn.xml" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>
