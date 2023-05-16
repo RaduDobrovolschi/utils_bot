@@ -11,11 +11,12 @@ import org.hibernate.annotations.*;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+
+import static com.utilsbot.utils.TimeUtils.getOffsetDate;
+import static com.utilsbot.utils.TimeUtils.getOffsetDateTime;
 
 @Entity
 @Table(name = "chat_config")
@@ -90,13 +91,11 @@ public class ChatConfig implements Serializable {
     }
 
     public LocalDateTime getUserTime() {
-        float offset = gmtOffset;
-        return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 100))).toLocalDateTime();
+        return getOffsetDateTime(gmtOffset);
     }
 
     public LocalDate getUserDate() {
-        float offset = gmtOffset;
-        return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 100))).toLocalDate();
+        return getOffsetDate(gmtOffset);
     }
 
     public boolean hasGtmOffset() {

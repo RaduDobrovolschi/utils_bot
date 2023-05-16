@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static com.utilsbot.config.TimeConfig.defaultDTFormatter;
 import static com.utilsbot.domain.enums.MessagesEnum.NOTIFICATION_UPDATE;
 import static com.utilsbot.keyboard.CustomKeyboards.getKeyboard;
+import static com.utilsbot.utils.TimeUtils.defaultDTFormatter;
 
 @Service
 @Transactional
@@ -29,12 +29,11 @@ public class NotificationService {
 
     public void addNotification(LocalDateTime inputTime, Long chatId) {
         ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
-        Notification save = notificationRepository.save(
+        notificationRepository.save(
                 new Notification(
                         inputTime,
                         chatConfig
                 ));
-//        chatConfig.getNotifications().add(save);
     }
 
     //todo add time till notification to msg
@@ -43,7 +42,7 @@ public class NotificationService {
         if (byId.isPresent()) {
             Notification notification = byId.get();
             return new ResponseMsgDataDTO(
-                    String.format(NOTIFICATION_UPDATE.getValue(), notification.getScheduledFor().format(defaultDTFormatter)),
+                    String.format(NOTIFICATION_UPDATE.getValue(), notification.getZonedScheduledFor().format(defaultDTFormatter)),
                     getKeyboard(NOTIFICATION_UPDATE)
             );
         }

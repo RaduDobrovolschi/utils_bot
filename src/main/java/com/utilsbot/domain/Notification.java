@@ -11,9 +11,11 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import static com.utilsbot.utils.TimeUtils.applyOffset;
+
 @Entity
 @Table(name = "notification")
-@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
+@Cache(usage = CacheConcurrencyStrategy.READ_WRITE, region = "notification")
 public class Notification implements Serializable {
 
     @Id
@@ -66,6 +68,10 @@ public class Notification implements Serializable {
 
     public LocalDateTime getScheduledFor() {
         return scheduledFor;
+    }
+
+    public LocalDateTime getZonedScheduledFor() {
+        return applyOffset(chatConfig.getGmtOffset(), scheduledFor);
     }
 
     public void setScheduledFor(LocalDateTime scheduledFor) {

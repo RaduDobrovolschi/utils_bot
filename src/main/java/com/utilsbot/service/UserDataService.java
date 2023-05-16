@@ -29,29 +29,6 @@ public class UserDataService {
         return userData;
     }
 
-//    public Optional<UserData> handleCommand(Long chatId, Long userId) {
-//        ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
-//        Optional<UserData> first = chatConfigService.getChatConfig(chatId)
-//                .getUserData()
-//                .stream()
-//                .filter(data -> data.getUserId().equals(userId))
-//                .findFirst();
-//        if (first.isPresent()) {
-//            UserData userData = first.get();
-//            chatConfig.getUserData().remove(userData);
-//            return Optional.empty();
-//        } else {
-//            UserData save = userDataRepository.save(
-//                    new UserData(
-//                            userId,
-//                            chatConfig
-//                    )
-//            );
-//            chatConfig.getUserData().add(save);
-//            return Optional.of(save);
-//        }
-//    }
-
     public Optional<UserData> handleCommand(Long chatId, Long userId) {
         ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
         Optional<UserData> byId = userDataRepository.findById(new UserDataIds(userId, chatConfig));
@@ -65,7 +42,6 @@ public class UserDataService {
                             chatConfig
                     )
             );
-//            chatConfig.getUserData().add(save);
             return Optional.of(save);
         }
     }

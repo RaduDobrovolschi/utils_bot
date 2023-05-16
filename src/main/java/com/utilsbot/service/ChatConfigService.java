@@ -15,11 +15,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.utilsbot.config.TimeConfig.defaultDTFormatter;
 import static com.utilsbot.domain.enums.CallbackDataEnum.ADD_NOTIFICATION;
 import static com.utilsbot.domain.enums.MessagesEnum.EVERYONE_CONFIG;
 import static com.utilsbot.keyboard.CustomKeyboards.notificationConfig;
 import static com.utilsbot.keyboard.KeyboardHelper.createBtn;
+import static com.utilsbot.utils.TimeUtils.defaultDTFormatter;
 
 @Service
 @Transactional
@@ -60,7 +60,7 @@ public class ChatConfigService {
         );
         List<InlineKeyboardButton> buttons = chatConfig.getNotifications()
                 .stream()
-                .map(notification -> createBtn(notification.getScheduledFor().format(defaultDTFormatter), "NF_ID_" + notification.getId()))
+                .map(notification -> createBtn(notification.getZonedScheduledFor().format(defaultDTFormatter), "NF_ID_" + notification.getId()))
                 .collect(Collectors.toList());
         if (buttons.size() < appProperties.getBot().getNotificationsLimit()) {
             buttons.add(createBtn("+ New notification", ADD_NOTIFICATION));

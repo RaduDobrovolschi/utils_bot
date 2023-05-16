@@ -47,6 +47,7 @@ import static com.utilsbot.keyboard.CustomKeyboards.*;
 import static com.utilsbot.keyboard.KeyboardHelper.updateHour;
 import static com.utilsbot.keyboard.KeyboardHelper.updateMinute;
 import static com.utilsbot.utils.AppUtils.*;
+import static com.utilsbot.utils.TimeUtils.removeOffset;
 
 /*
  *
@@ -381,7 +382,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                                 answerCallbackQuery("notification time can't be in the past", update.getCallbackQuery());
                                 return;
                             } else {
-                                notificationService.addNotification(inputTime, chatConfig.getId());
+                                notificationService.addNotification(removeOffset(chatConfig.getGmtOffset(), inputTime), chatConfig.getId());
                                 answerCallbackQuery("notification added successfully", update.getCallbackQuery());
                             }
                         }
