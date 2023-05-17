@@ -35,12 +35,11 @@ public class InsertListener implements PostInsertEventListener {
 
             if (LocalDate.from(notification.getScheduledFor()).isEqual(LocalDate.now())) {
                 notificationSchedulerService.addNotification(
-                        new NotificationToScheduleDto(notification.getChatConfig().getId(), notification.getScheduledFor().toInstant(ZoneOffset.UTC))
+                        new NotificationToScheduleDto(notification.getId(), notification.getScheduledFor().toInstant(ZoneOffset.UTC))
                 );
             }
         }
-
-        if (entity instanceof UserData userData && userData.getChatConfig() != null) {
+        else if (entity instanceof UserData userData && userData.getChatConfig() != null) {
             cacheFactoryConfiguration.getCacheManager().getCache("userData-list").clear();
         }
     }

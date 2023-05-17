@@ -35,4 +35,28 @@ public class AppUtils {
         }
         return 0;
     }
+
+    public static int indexOfByRegex(CharSequence regex, CharSequence text) {
+        return indexOfByRegex(Pattern.compile(regex.toString()), text);
+    }
+
+    public static int indexOfByRegex(Pattern pattern, CharSequence text) {
+        Matcher m = indexOfByRegexToMatcher(pattern, text);
+        if ( m != null ) {
+            return m.start();
+        }
+        return -1;
+    }
+
+    public static Matcher indexOfByRegexToMatcher(CharSequence regex, CharSequence text) {
+        return indexOfByRegexToMatcher(Pattern.compile(regex.toString()), text);
+    }
+
+    public static Matcher indexOfByRegexToMatcher(Pattern pattern, CharSequence text) {
+        Matcher m = pattern.matcher(text);
+        if ( m.find() ) {
+            return m;
+        }
+        return null;
+    }
 }

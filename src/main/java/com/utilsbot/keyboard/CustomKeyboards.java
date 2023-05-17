@@ -46,7 +46,7 @@ public class CustomKeyboards {
         return InlineKeyboardMarkup.builder()
                 .keyboard(
                         List.of(
-                                List.of(createBtn("Cancel", CANCEL_REGION_UPDATE))
+                                List.of(createBtn("Cancel", CANCEL))
                         )
                 )
                 .build();

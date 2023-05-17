@@ -3,10 +3,7 @@ package com.utilsbot.bots;
 import com.utilsbot.config.AppProperties;
 import com.utilsbot.domain.ChatConfig;
 import com.utilsbot.domain.UserData;
-import com.utilsbot.domain.enums.CallbackDataEnum;
-import com.utilsbot.domain.enums.InputType;
-import com.utilsbot.domain.enums.MessagesEnum;
-import com.utilsbot.domain.enums.TimeUnits;
+import com.utilsbot.domain.enums.*;
 import com.utilsbot.service.*;
 import com.utilsbot.service.dto.ExpectingInputDto;
 import com.utilsbot.service.dto.LocationResponseDTO;
@@ -53,7 +50,6 @@ import static com.utilsbot.utils.TimeUtils.removeOffset;
  *
  * todo list of shit that can be added
  *   notifications -> this one is gonna be a pain
- *   ocr -> to add language selection
  *   voice message to text -> reee no free api will have to use a separate microservice
  *   audio file to vm
  *
@@ -200,8 +196,11 @@ public class UtilsBot extends TelegramLongPollingBot {
             default -> {
                 if (lowerCaseMessage.startsWith("/translate")) {
                     if (lowerCaseMessage.length() == 10) {
-                        chatConfigService.setLanguage(message.getChatId(), Language.NONE);
-                        responseMsg = "translation disabled";
+                        if (chatConfigService.setLanguage(message.getChatId(), Language.NONE)) {
+                            responseMsg = "translation disabled";
+                        } else {
+                            responseMsg = "Please specify the target language /translate <language code>\nExample: /translate en";
+                        }
                     } else {
                         String language = "";
                         try {
@@ -280,30 +279,32 @@ public class UtilsBot extends TelegramLongPollingBot {
                     );
                     answerCallbackQuery("Dad bot " + (dadBot? "enabled" : "disabled"), update.getCallbackQuery());
                 }
-                case TIME_REGION_UPDATE_NAME -> {
-                    User from = update.getCallbackQuery().getFrom();
-                    SendMessage.SendMessageBuilder sendMessageBuilder = SendMessage.builder()
-                            .replyMarkup(getKeyboard(REQUEST_LOCATION))
-                            .chatId(message.getChatId());
-                    addUserMentions(sendMessageBuilder, names -> names.append(REQUEST_LOCATION.getValue()).toString(), from);
-                    Message sentMsg = null;
-                    try {
-                        sentMsg = execute(sendMessageBuilder.build());
-                    } catch (TelegramApiException e) {
-                        log.error("failed to send message, update {}", update);
-                        e.printStackTrace();
-                    }
-                    expectingInputService.addExpectingInput(
-                            new ExpectingInputDto(from.getId(), message.getChatId(), InputType.LOCATION_UPDATE, sentMsg)
-                    );
-                }
+                case TIME_REGION_UPDATE_NAME -> sendTextRequestMsg(update, REQUEST_LOCATION.getValue(), InputType.LOCATION_UPDATE);
                 case NOTIFICATIONS_CONFIG -> responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 case PING_EVERYONE -> responseMsg = new ResponseMsgDataDTO(handleEveryone(message));
                 case UPDATE_USER_GROUP -> {
                     Optional<UserData> userData = userDataService.handleCommand(message.getChatId(), update.getCallbackQuery().getFrom().getId());
+                    String updatedMsgText;
+                    String username = getUsername(message.getChatId(), update.getCallbackQuery().getFrom().getId());
+                    String text = message.getText();
+                    String userNames = text.substring(text.indexOf("notifications:") + 14);
+                    if (userData.isPresent()) {
+                        updatedMsgText = new StringBuilder(message.getText())
+                                .append(userNames.length() == 0? "\n" : ", ")
+                                .append(username)
+                                .toString();
+                    } else {
+                        updatedMsgText = String.format(EVERYONE_CONFIG.getValue(), 
+                                userNames.replaceFirst(username, "")
+                                        .replaceFirst(",,", "")
+                        );
+                    }
+                    responseMsg = new ResponseMsgDataDTO(
+                        updatedMsgText, message.getReplyMarkup()
+                    );
                     answerCallbackQuery("notifications " + (userData.isPresent()? "enabled" : "disabled"), update.getCallbackQuery());
                 }
-                case CANCEL_REGION_UPDATE -> {
+                case CANCEL -> {
                     expectingInputService.removeExpectingInput(message.getChatId());
                     deleteMsg(message);
                 }
@@ -399,6 +400,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     }
                     responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 }
+                case ADD_NF_CUSTOM_MSG -> sendTextRequestMsg(update, "please provide ur custom msg", InputType.NF_SET_CUSTOM_MSG);
                 case EXIT -> deleteMsg(message);
                 case IGNORE -> { return; }
             }
@@ -494,7 +496,12 @@ public class UtilsBot extends TelegramLongPollingBot {
 
         //Dad bot
         if (Boolean.TRUE.equals(chatConfig.getDadBot())) {
-            int index = text.indexOf("I'm ");
+            int index = indexOfByRegex("[Ii]['’]m ", text);
+            int length = 4;
+            if (index == -1) {
+                index = indexOfByRegex("[Ii]m ", text);
+                length = 3;
+            }
             if (index != -1) {
                 try {
                     executeAsync(
@@ -502,7 +509,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                                     .replyToMessageId(message.getMessageId())
                                     .chatId(message.getChatId())
                                     .text(new StringBuilder("Hi ")
-                                            .append(text.substring(index + 4))
+                                            .append(text.substring(index + length))
                                             .append(", I'm dad")
                                             .toString())
                                     .build()
@@ -607,9 +614,31 @@ public class UtilsBot extends TelegramLongPollingBot {
         }
         return errorMsg;
     }
+    public void sendTextRequestMsg(Update update, String text, InputType inputType) {
+        User from = update.getCallbackQuery().getFrom();
+        Message message = update.getCallbackQuery().getMessage();
+        SendMessage.SendMessageBuilder sendMessageBuilder = SendMessage.builder()
+                .replyMarkup(getKeyboard(REQUEST_LOCATION))
+                .chatId(message.getChatId());
+        addUserMentions(sendMessageBuilder, names -> names.append(text).toString(), from);
+        Message sentMsg = null;
+        try {
+            sentMsg = execute(sendMessageBuilder.build());
+        } catch (TelegramApiException e) {
+            log.error("failed to send message, update {}", update);
+            e.printStackTrace();
+        }
+        expectingInputService.addExpectingInput(
+                new ExpectingInputDto(from.getId(), message.getChatId(), inputType, sentMsg)
+        );
+    }
 
     private void handlePhoto(Message message) {
-        if (message.getCaption().toLowerCase().startsWith("/ocr")) {
+        String command = message.getCaption().toLowerCase();
+        if (command.startsWith("/ocr")) {
+            String[] spit = command.split(" ");
+            String langStr = spit.length > 1? spit[1] : "";
+            OcrLanguages lang = OcrLanguages.of(langStr);
             byte[] fileData;
             try {
                 fileData = getFileData(message);
@@ -620,7 +649,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             }
             String responseMsg = "Failed to process image";
             if (fileData.length > 0) {
-                Optional<String> textFromImage = ocrService.getTextFromImage(fileData);
+                Optional<String> textFromImage = ocrService.getTextFromImage(fileData, lang);
                 if (textFromImage.isPresent()) {
                     responseMsg = textFromImage.get();
                 }
@@ -718,16 +747,20 @@ public class UtilsBot extends TelegramLongPollingBot {
     }
 
     public String getUsername(UserData user) {
+        return getUsername(user.getChatConfig().getId(), user.getUserId());
+    }
+
+    public String getUsername(Long chatId, Long userId) {
         try {
             User result = execute(
                     GetChatMember.builder()
-                            .chatId(user.getChatConfig().getId())
-                            .userId(user.getUserId())
+                            .chatId(chatId)
+                            .userId(userId)
                             .build()
             ).getUser();
             return result.getUserName() == null ? result.getFirstName() : result.getUserName();
         } catch (TelegramApiException e) {
-            log.error("failed to get user: {}", user);
+            log.error("failed to get user: chatId {}, userId {}", chatId, userId);
             e.printStackTrace();
         }
         return "";

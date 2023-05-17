@@ -14,7 +14,7 @@ public enum MessagesEnum {
                       
                       /everyone - pings all users that enabled notifications with /notifications
                       
-                      send a image with /ocr caption to identify the image text
+                      send a image with /ocr <language code optional> caption to identify the image text
                       
                       github page:
                       """),

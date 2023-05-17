@@ -20,8 +20,7 @@ public class DeleteListener extends DefaultDeleteEventListener {
             ChatConfig chatConfig = notification.getChatConfig();
             chatConfig.getNotifications().remove(notification);
         }
-
-        if (entity instanceof UserData userData) {
+        else if (entity instanceof UserData userData) {
             ChatConfig chatConfig = userData.getChatConfig();
             chatConfig.getUserData().remove(userData);
         }

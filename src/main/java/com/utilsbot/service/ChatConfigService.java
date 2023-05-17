@@ -40,8 +40,13 @@ public class ChatConfigService {
         );
     }
 
-    public void setLanguage(long chatId, Language language) {
-        getChatConfig(chatId).setTranslationTargetLang(language);
+    public boolean setLanguage(long chatId, Language language) {
+        ChatConfig chatConfig = getChatConfig(chatId);
+        if (chatConfig.getTranslationTargetLang().equals(Language.NONE)) {
+            return false;
+        }
+        chatConfig.setTranslationTargetLang(language);
+        return true;
     }
 
     public void updateGmtOffset(Long chatId, float offset) {

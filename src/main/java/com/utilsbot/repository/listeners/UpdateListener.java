@@ -24,8 +24,7 @@ public class UpdateListener implements PostUpdateEventListener {
         if (entity instanceof Notification notification && notification.getChatConfig() != null) {
             cacheFactoryConfiguration.getCacheManager().getCache("notification-list").clear();
         }
-
-        if (entity instanceof UserData userData && userData.getChatConfig() != null) {
+        else if (entity instanceof UserData userData && userData.getChatConfig() != null) {
             cacheFactoryConfiguration.getCacheManager().getCache("userData-list").clear();
         }
     }
