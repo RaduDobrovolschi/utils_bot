@@ -25,12 +25,20 @@ public record ExpectingInputDto(
         updateNotificationTimeData(TimeUnits.MONTH, month);
     }
 
-    public ExpectingInputDto(Long userId, Long chatId, InputType inputType, Message previousMsg) {
-        this(Instant.now(), userId, chatId, inputType, Optional.of(previousMsg), Optional.empty(), Optional.empty());
+    public ExpectingInputDto(CallbackQuery callbackQuery, InputType inputType, Message previousMsg) {
+        this(Instant.now(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getChatId(), inputType, Optional.of(previousMsg), Optional.empty(), Optional.empty());
+    }
+
+    public ExpectingInputDto(CallbackQuery callbackQuery, InputType inputType, Message previousMsg, Long nfId) {
+        this(Instant.now(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getChatId(), inputType, Optional.of(previousMsg), Optional.empty(), Optional.of(nfId));
     }
 
     public ExpectingInputDto(CallbackQuery callbackQuery, InputType inputType, Long notificationId) {
         this(Instant.now(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getChatId(), inputType, Optional.empty(), Optional.empty(), Optional.of(notificationId));
+    }
+
+    public ExpectingInputDto(CallbackQuery callbackQuery, InputType inputType, Message previousMsg, EnumMap<TimeUnits, Integer> notificationTimeData) {
+        this(Instant.now(), callbackQuery.getFrom().getId(), callbackQuery.getMessage().getChatId(), inputType, Optional.of(previousMsg), Optional.of(notificationTimeData), Optional.empty());
     }
 
     public boolean updateNotificationTimeData(TimeUnits timeUnits, int data) {

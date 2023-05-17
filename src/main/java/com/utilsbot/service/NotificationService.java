@@ -49,6 +49,10 @@ public class NotificationService {
         return null;
     }
 
+    public void setCustomMsg(Long nfId, Integer msgId) {
+        notificationRepository.findById(nfId).ifPresent(notification -> notification.setCustomMsgId(msgId));
+    }
+
     public void delete(Long nId) {
         notificationRepository.deleteById(nId);
     }

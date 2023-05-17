@@ -29,6 +29,18 @@ public class UserDataService {
         return userData;
     }
 
+    public void addPrivateChatUser(Long chatId, Long userId) {
+        ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
+        if (chatConfig.getUserData().isEmpty()) {
+            userDataRepository.save(
+                    new UserData(
+                            userId,
+                            chatConfig
+                    )
+            );
+        }
+    }
+
     public Optional<UserData> handleCommand(Long chatId, Long userId) {
         ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
         Optional<UserData> byId = userDataRepository.findById(new UserDataIds(userId, chatConfig));

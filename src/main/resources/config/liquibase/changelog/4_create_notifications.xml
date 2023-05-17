@@ -14,7 +14,7 @@
             <column name="chat_id" type="bigint">
                 <constraints nullable="false"/>
             </column>
-            <column name="custom_msg_id" type="bigint"/>
+            <column name="custom_msg_id" type="INTEGER"/>
             <column name="scheduled_for" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>

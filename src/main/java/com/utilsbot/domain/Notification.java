@@ -25,7 +25,7 @@ public class Notification implements Serializable {
     private Long id;
 
     @Column(name = "custom_msg_id")
-    private Long customMsgId;
+    private Integer customMsgId;
 
     @Column(name = "scheduled_for")
     private LocalDateTime scheduledFor;
@@ -39,7 +39,7 @@ public class Notification implements Serializable {
     public Notification() {
     }
 
-    public Notification(Long customMsgId, LocalDateTime scheduledFor, ChatConfig chatConfig) {
+    public Notification(Integer customMsgId, LocalDateTime scheduledFor, ChatConfig chatConfig) {
         this.customMsgId = customMsgId;
         this.scheduledFor = scheduledFor;
         this.chatConfig = chatConfig;
@@ -58,11 +58,11 @@ public class Notification implements Serializable {
         this.id = id;
     }
 
-    public Long getCustomMsgId() {
+    public Integer getCustomMsgId() {
         return customMsgId;
     }
 
-    public void setCustomMsgId(Long customMsgId) {
+    public void setCustomMsgId(Integer customMsgId) {
         this.customMsgId = customMsgId;
     }
 

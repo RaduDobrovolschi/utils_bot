@@ -3,7 +3,10 @@ package com.utilsbot.bots;
 import com.utilsbot.config.AppProperties;
 import com.utilsbot.domain.ChatConfig;
 import com.utilsbot.domain.UserData;
-import com.utilsbot.domain.enums.*;
+import com.utilsbot.domain.enums.CallbackDataEnum;
+import com.utilsbot.domain.enums.MessagesEnum;
+import com.utilsbot.domain.enums.OcrLanguages;
+import com.utilsbot.domain.enums.TimeUnits;
 import com.utilsbot.service.*;
 import com.utilsbot.service.dto.ExpectingInputDto;
 import com.utilsbot.service.dto.LocationResponseDTO;
@@ -11,6 +14,7 @@ import com.utilsbot.service.dto.ResponseMsgDataDTO;
 import jakarta.annotation.PostConstruct;
 import net.suuft.libretranslate.Language;
 import net.suuft.libretranslate.Translator;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,6 +34,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.text.ParseException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -37,14 +42,14 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
 
-import static com.utilsbot.domain.enums.InputType.NF_BUILD;
-import static com.utilsbot.domain.enums.InputType.NF_UPDATE;
+import static com.utilsbot.domain.enums.InputType.*;
 import static com.utilsbot.domain.enums.MessagesEnum.*;
 import static com.utilsbot.keyboard.CustomKeyboards.*;
 import static com.utilsbot.keyboard.KeyboardHelper.updateHour;
 import static com.utilsbot.keyboard.KeyboardHelper.updateMinute;
 import static com.utilsbot.utils.AppUtils.*;
 import static com.utilsbot.utils.TimeUtils.removeOffset;
+import static com.utilsbot.utils.TimeUtils.timeInputFormat;
 
 /*
  *
@@ -279,10 +284,25 @@ public class UtilsBot extends TelegramLongPollingBot {
                     );
                     answerCallbackQuery("Dad bot " + (dadBot? "enabled" : "disabled"), update.getCallbackQuery());
                 }
-                case TIME_REGION_UPDATE_NAME -> sendTextRequestMsg(update, REQUEST_LOCATION.getValue(), InputType.LOCATION_UPDATE);
-                case NOTIFICATIONS_CONFIG -> responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
+                case TIME_REGION_UPDATE_NAME -> {
+                    Message msg = sendTextRequestMsg(update, REQUEST_LOCATION.getValue());
+                    expectingInputService.addExpectingInput(
+                            new ExpectingInputDto(update.getCallbackQuery(), LOCATION_UPDATE, msg)
+                    );
+                }
+                case NOTIFICATIONS_CONFIG -> {
+                    if (message.getChat().getType().equals("private")) {
+                        userDataService.addPrivateChatUser(message.getChatId(), message.getFrom().getId());
+                    }
+                    responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
+                }
                 case PING_EVERYONE -> responseMsg = new ResponseMsgDataDTO(handleEveryone(message));
                 case UPDATE_USER_GROUP -> {
+                    if(message.getChat().getType().equals("private")) {
+                        answerCallbackQuery("only for group chats", update.getCallbackQuery());
+                        return;
+                    }
+
                     Optional<UserData> userData = userDataService.handleCommand(message.getChatId(), update.getCallbackQuery().getFrom().getId());
                     String updatedMsgText;
                     String username = getUsername(message.getChatId(), update.getCallbackQuery().getFrom().getId());
@@ -355,6 +375,17 @@ public class UtilsBot extends TelegramLongPollingBot {
                 case T_SUB_5 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time - 5);
                 case T_ADD_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time + 10);
                 case T_SUB_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time - 10);
+                case T_MANUAL_INPUT -> {
+                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
+                        expectingInput.notificationTimeData().isPresent()) {
+
+                        Message msg = sendTextRequestMsg(update, "please provide notification time like hh:mm");
+                        expectingInputService.addExpectingInput(
+                                new ExpectingInputDto(update.getCallbackQuery(), NF_SET_MANUAL_TIME, msg, expectingInput.notificationTimeData().get())
+                        );
+                    }
+                }
                 case NEXT_UPDATE_TIME -> {
                     if (message.getText().equals(SEL_NOTIFY_HOUR.getValue())) {
                         responseMsg = new ResponseMsgDataDTO(
@@ -392,7 +423,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 }
                 case DELETE_NF -> {
                     ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
-                    if (expectingInput != null && expectingInput.inputType().equals(InputType.NF_UPDATE) &&
+                    if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
                         expectingInput.notificationId().isPresent()) {
                         Long nId = expectingInput.notificationId().get();
                         notificationService.delete(nId);
@@ -400,7 +431,16 @@ public class UtilsBot extends TelegramLongPollingBot {
                     }
                     responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 }
-                case ADD_NF_CUSTOM_MSG -> sendTextRequestMsg(update, "please provide ur custom msg", InputType.NF_SET_CUSTOM_MSG);
+                case ADD_NF_CUSTOM_MSG -> {
+                    Message msg = sendTextRequestMsg(update, "please provide ur custom msg");
+                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
+                        expectingInput.notificationId().isPresent()) {
+                        expectingInputService.addExpectingInput(
+                                new ExpectingInputDto(update.getCallbackQuery(), NF_SET_CUSTOM_MSG, msg, expectingInput.notificationId().get())
+                        );
+                    }
+                }
                 case EXIT -> deleteMsg(message);
                 case IGNORE -> { return; }
             }
@@ -478,7 +518,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             responseMsg = notificationService.createEditNotificationMsg(id);
             if (responseMsg != null) {
                 expectingInputService.addExpectingInput(
-                        new ExpectingInputDto(update.getCallbackQuery(), InputType.NF_UPDATE, id)
+                        new ExpectingInputDto(update.getCallbackQuery(), NF_UPDATE, id)
                 );
             }
         }
@@ -543,10 +583,10 @@ public class UtilsBot extends TelegramLongPollingBot {
 
     private void handleMsgResponse(Message message) {
         ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+        String responseMsg = null;
         switch (expectingInput.inputType()) {
             case LOCATION_UPDATE -> {
                 //todo add option to process timezone_abbreviation and gmt_offset as user input
-                String responseMsg;
                 Optional<LocationResponseDTO> locationData = locationService.getLocationData(message.getText());
                 if (locationData.isPresent()) {
                     LocationResponseDTO locationResult = locationData.get();
@@ -558,30 +598,60 @@ public class UtilsBot extends TelegramLongPollingBot {
                 } else {
                     responseMsg = LOCATION_FAIL.getValue();
                 }
+            }
+            case NF_SET_CUSTOM_MSG -> {
+                expectingInput.notificationId().ifPresent(nfId ->
+                        notificationService.setCustomMsg(nfId, message.getMessageId())
+                );
+                responseMsg = "notification msg saved";
+            }
+            case NF_SET_MANUAL_TIME -> {
+                Calendar calendar = Calendar.getInstance();
                 try {
-                    executeAsync(
-                            SendMessage.builder()
-                                    .replyToMessageId(message.getMessageId())
-                                    .chatId(message.getChatId())
-                                    .text(responseMsg)
-                                    .build()
-                    );
-                    if (expectingInput.previousMsg().isPresent()) {
-                        Message prevMsg = expectingInput.previousMsg().get();
-                        executeAsync(
-                                EditMessageText.builder()
-                                        .chatId(prevMsg.getChatId())
-                                        .messageId(prevMsg.getMessageId())
-                                        .entities(prevMsg.getEntities())
-                                        .text(prevMsg.getText())
-                                        .replyMarkup(null)
-                                        .build()
-                        );
-                    }
-                } catch (TelegramApiException | IllegalArgumentException e) {
-                    log.error("failed update location, message {}, ExpectingInputDto {}", message, expectingInput);
-                    e.printStackTrace();
+                    Date date = timeInputFormat.parse(message.getText());
+                    calendar.setTime(date);
+                } catch (ParseException e) {
+                    log.warn("failed to process time {}, e: {}", message.getText(), e.getMessage());
+                    responseMsg = "invalid time format";
                 }
+
+                if (StringUtils.isBlank(responseMsg)){
+                    int hours = calendar.get(Calendar.HOUR_OF_DAY);
+                    int minutes = calendar.get(Calendar.MINUTE);
+                    //todo finish implementation
+                }
+            }
+        }
+
+        if (StringUtils.isNotBlank(responseMsg)) {
+            try {
+                executeAsync(
+                        SendMessage.builder()
+                                .replyToMessageId(message.getMessageId())
+                                .chatId(message.getChatId())
+                                .text(responseMsg)
+                                .build()
+                );
+            } catch (TelegramApiException | IllegalArgumentException e) {
+                log.error("failed update location, message {}, ExpectingInputDto {}", message, expectingInput);
+                e.printStackTrace();
+            }
+        }
+        if (expectingInput.previousMsg().isPresent()) {
+            Message prevMsg = expectingInput.previousMsg().get();
+            try {
+                executeAsync(
+                        EditMessageText.builder()
+                                .chatId(prevMsg.getChatId())
+                                .messageId(prevMsg.getMessageId())
+                                .entities(prevMsg.getEntities())
+                                .text(prevMsg.getText())
+                                .replyMarkup(null)
+                                .build()
+                );
+            } catch (TelegramApiException e) {
+                log.error("failed to update previous msg {}", prevMsg);
+                e.printStackTrace();
             }
         }
         expectingInputService.removeExpectingInput(message.getChatId());
@@ -614,23 +684,20 @@ public class UtilsBot extends TelegramLongPollingBot {
         }
         return errorMsg;
     }
-    public void sendTextRequestMsg(Update update, String text, InputType inputType) {
-        User from = update.getCallbackQuery().getFrom();
-        Message message = update.getCallbackQuery().getMessage();
+
+    public Message sendTextRequestMsg(Update update, String text) {
+        CallbackQuery callbackQuery = update.getCallbackQuery();
         SendMessage.SendMessageBuilder sendMessageBuilder = SendMessage.builder()
                 .replyMarkup(getKeyboard(REQUEST_LOCATION))
-                .chatId(message.getChatId());
-        addUserMentions(sendMessageBuilder, names -> names.append(text).toString(), from);
-        Message sentMsg = null;
+                .chatId(callbackQuery.getMessage().getChatId());
+        addUserMentions(sendMessageBuilder, names -> names.append(text).toString(), callbackQuery.getFrom());
         try {
-            sentMsg = execute(sendMessageBuilder.build());
+            return execute(sendMessageBuilder.build());
         } catch (TelegramApiException e) {
             log.error("failed to send message, update {}", update);
             e.printStackTrace();
         }
-        expectingInputService.addExpectingInput(
-                new ExpectingInputDto(from.getId(), message.getChatId(), inputType, sentMsg)
-        );
+        return null;
     }
 
     private void handlePhoto(Message message) {

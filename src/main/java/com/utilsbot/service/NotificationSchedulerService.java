@@ -12,6 +12,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.CopyMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -81,9 +82,16 @@ public class NotificationSchedulerService {
                 }
                 try {
                     utilsBot.executeAsync(sendMessageBuilder.build());
+                    utilsBot.executeAsync(
+                            CopyMessage.builder()
+                                    .fromChatId(chatId)
+                                    .chatId(chatId)
+                                    .messageId(notification.getCustomMsgId())
+                                    .build()
+                    );
                 } catch (TelegramApiException e) {
-                    log.error("failed to send scheduled notification {}", notification);
-                    e.printStackTrace();
+                log.error("failed to send scheduled notification {}", notification);
+                e.printStackTrace();
                 }
                 notificationRepository.delete(notification);
         }), notificationDto.triggerTime());
