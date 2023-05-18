@@ -48,8 +48,7 @@ import static com.utilsbot.keyboard.CustomKeyboards.*;
 import static com.utilsbot.keyboard.KeyboardHelper.updateHour;
 import static com.utilsbot.keyboard.KeyboardHelper.updateMinute;
 import static com.utilsbot.utils.AppUtils.*;
-import static com.utilsbot.utils.TimeUtils.removeOffset;
-import static com.utilsbot.utils.TimeUtils.timeInputFormat;
+import static com.utilsbot.utils.TimeUtils.*;
 
 /*
  *
@@ -397,20 +396,15 @@ public class UtilsBot extends TelegramLongPollingBot {
                         if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
                             expectingInput.notificationTimeData().isPresent()) {
 
-                            EnumMap<TimeUnits, Integer> timeUnitsEnumMap = expectingInput.notificationTimeData().get();
                             ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                             String[] split = message.getReplyMarkup().getKeyboard().get(0).get(1).getText().split(":");
-
-                            LocalDateTime inputTime = LocalDateTime.of(
-                                    timeUnitsEnumMap.get(TimeUnits.YEAR),
-                                    timeUnitsEnumMap.get(TimeUnits.MONTH),
-                                    timeUnitsEnumMap.get(TimeUnits.DAY),
+                            LocalDateTime inputTime = expectingInput.createDateTime(
                                     Integer.parseInt(split[0]),
                                     Integer.parseInt(split[1])
                             );
                             LocalDateTime userTime = chatConfig.getUserTime();
 
-                            if (userTime.isAfter(inputTime)) {
+                            if (inputTime != null && userTime.isAfter(inputTime)) {
                                 answerCallbackQuery("notification time can't be in the past", update.getCallbackQuery());
                                 return;
                             } else {
@@ -615,10 +609,20 @@ public class UtilsBot extends TelegramLongPollingBot {
                     responseMsg = "invalid time format";
                 }
 
-                if (StringUtils.isBlank(responseMsg)){
-                    int hours = calendar.get(Calendar.HOUR_OF_DAY);
-                    int minutes = calendar.get(Calendar.MINUTE);
-                    //todo finish implementation
+                if (StringUtils.isBlank(responseMsg)) {
+                    LocalDateTime inputTime = expectingInput.createDateTime(
+                            calendar.get(Calendar.HOUR_OF_DAY),
+                            calendar.get(Calendar.MINUTE)
+                    );
+                    ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+                    LocalDateTime userTime = chatConfig.getUserTime();
+
+                    if (inputTime != null && userTime.isAfter(inputTime)) {
+                        responseMsg = "failed to update time";
+                    } else {
+                        notificationService.addNotification(removeOffset(chatConfig.getGmtOffset(), inputTime), chatConfig.getId());
+                        responseMsg = "notification set for " + inputTime.format(defaultDTFormatter);
+                    }
                 }
             }
         }

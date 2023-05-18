@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.Optional;
 
@@ -47,6 +48,19 @@ public record ExpectingInputDto(
         }
         notificationTimeData.get().put(timeUnits, data);
         return true;
+    }
+
+    public LocalDateTime createDateTime(int h, int m) {
+        if (notificationTimeData.isPresent()) {
+            EnumMap<TimeUnits, Integer> timeUnitsIntegerEnumMap = notificationTimeData.get();
+            return LocalDateTime.of(
+                    timeUnitsIntegerEnumMap.get(TimeUnits.YEAR),
+                    timeUnitsIntegerEnumMap.get(TimeUnits.MONTH),
+                    timeUnitsIntegerEnumMap.get(TimeUnits.DAY),
+                    h, m
+            );
+        }
+        return null;
     }
 }
 
