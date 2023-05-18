@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  app:
+    image: registry.hub.docker.com/radudob/utils-bot:latest
+    environment:
+      - APP_TRANSLATION_API_URL=${TRANSLATION_API_URL}
+      - APP_OCR_API_KEY=${OCR_API_KEY}
+      - APP_TIMEZONE_API_KEY=${TIMEZONE_API_KEY}
+      - APP_BOT_TOKEN=${BOT_TOKEN}
+      - APP_BOT_USERNAME=${BOT_USERNAME}
+      - APP_NOTIFICATIONS_LIMIT=5
+      - APP_MICROSERVICES_WHISPER_URL=http://whisper:9000
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/UtilsBotDB
+    depends_on:
+      - whisper
+      - db
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=base
+  db:
+    image: postgres
+    restart: always
+    environment:
+     - POSTGRES_PASSWORD=postgres
+     - POSTGRES_USER=postgres
+     - POSTGRES_DB=UtilsBotDB
+    ports:
+     - "5432:5432"

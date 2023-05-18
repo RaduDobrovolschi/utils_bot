@@ -30,7 +30,7 @@ public enum MessagesEnum {
                         """),
     LANG_SELECT_MSG("current language: %s\n\nplease select a target language"),
     SHARE_LOCATION("Please use the inline keyboard to share ur location"),
-    REQUEST_LOCATION("please provide ur location/city name"),
+    REQUEST_MSG_UPDATE("please provide %s"),
     LOCATION_UPDATED("Your time zone was set to: %s %s %s"),
     LOCATION_FAIL("Failed to update time zone"),
     SEL_NOTIFY_MONTH("Please select notification month"),

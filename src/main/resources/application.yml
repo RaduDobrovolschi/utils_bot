@@ -6,6 +6,8 @@ app:
     token: ''
     username: ''
     notifications-limit: 5
+  microservices:
+    whisper-url: 'http://localhost:9000'
 
 cron:
   expecting-input-cleanup: "*/5 * * * * *"

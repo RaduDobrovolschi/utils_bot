@@ -22,7 +22,7 @@ public class CustomKeyboards {
 
     static {
         keyboardsMap.put(LANG_SELECT_MSG, languageSelectionKeyboard());
-        keyboardsMap.put(REQUEST_LOCATION, cancelRegionUpdate());
+        keyboardsMap.put(REQUEST_MSG_UPDATE, cancelRegionUpdate());
         keyboardsMap.put(NOTIFICATION_UPDATE, updateNotification());
     }
 

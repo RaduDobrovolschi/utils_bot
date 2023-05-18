@@ -48,7 +48,6 @@ public class OcrService {
                 return UUID.randomUUID() + ".jpg";
             }
         };
-        log.error("lang.toString().toLowerCase() {}", lang.toString().toLowerCase());
         body.add("file", byteArrayResource);
         body.add("apikey", appProperties.getOcrApiKey());
         body.add("language", lang.toString().toLowerCase());

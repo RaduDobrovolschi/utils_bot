@@ -71,6 +71,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     private final ExpectingInputService expectingInputService;
     private final LocationService locationService;
     private final OcrService ocrService;
+    private final TranscriptionService transcriptionService;
     private final Executor asyncExecutor;
 
     public UtilsBot(AppProperties appProperties,
@@ -80,6 +81,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     ExpectingInputService expectingInputService,
                     LocationService locationService,
                     OcrService ocrService,
+                    TranscriptionService transcriptionService,
                     @Qualifier("taskExecutor") Executor asyncExecutor) {
         super(appProperties.getBot().getToken());
         this.appProperties = appProperties;
@@ -89,6 +91,7 @@ public class UtilsBot extends TelegramLongPollingBot {
         this.expectingInputService = expectingInputService;
         this.locationService = locationService;
         this.ocrService = ocrService;
+        this.transcriptionService = transcriptionService;
         this.asyncExecutor = asyncExecutor;
     }
 
@@ -110,7 +113,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             );
         } catch (TelegramApiException e) {
             log.error("failed to set bot commands");
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
     }
 
@@ -142,6 +145,9 @@ public class UtilsBot extends TelegramLongPollingBot {
                 if (message.hasPhoto()) {
                     handlePhoto(message);
                 }
+                if (message.hasVoice()) {
+                    handleVoice(message);
+                }
             } else if (update.hasCallbackQuery()) {
                 handleCallbackQuery(update);
             }
@@ -150,7 +156,7 @@ public class UtilsBot extends TelegramLongPollingBot {
 
     private void handleCommand(String lowerCaseMessage, Update update) {
         Message message = update.getMessage();
-        if (!message.getChat().getType().equals("private")) {
+        if (!message.getChat().getType().equals(PRIVATE)) {
             lowerCaseMessage = lowerCaseMessage.replace(("@" + appProperties.getBot().getUsername().toLowerCase()), "");
         }
         String responseMsg = null;
@@ -172,7 +178,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 }
             }
             case "/notifications" -> {
-                if (message.getChat().getType().equals("private"))
+                if (message.getChat().getType().equals(PRIVATE))
                     responseMsg = "this command is only available in group chats";
                 else {
                     Optional<UserData> userData = userDataService.handleCommand(message.getChatId(), message.getFrom().getId());
@@ -181,7 +187,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                             SendMessage.builder()
                                     .chatId(message.getChatId())
                                     .replyToMessageId(message.getMessageId())
-                                    .text("notifications " + (userData.isPresent()? "enabled" : "disabled"))
+                                    .text("notifications " + (userData.isPresent()? ENABLED : DISABLED))
                                     .build()
                         );
                     } catch (TelegramApiException e) {
@@ -195,7 +201,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                 chatConfig.toggleDadBot();
                 chatConfigService.save(chatConfig);
-                responseMsg = "Dad bot is " + (Boolean.TRUE.equals(chatConfig.getDadBot())? "enabled" : "disabled");
+                responseMsg = "Dad bot is " + (Boolean.TRUE.equals(chatConfig.getDadBot())? ENABLED : DISABLED);
             }
             default -> {
                 if (lowerCaseMessage.startsWith("/translate")) {
@@ -281,23 +287,27 @@ public class UtilsBot extends TelegramLongPollingBot {
                             message.getText(),
                             infoKeyboard(dadBot, chatConfig.getTranslationTargetLang())
                     );
-                    answerCallbackQuery("Dad bot " + (dadBot? "enabled" : "disabled"), update.getCallbackQuery());
+                    answerCallbackQuery("Dad bot " + (dadBot? ENABLED : DISABLED), update.getCallbackQuery());
                 }
                 case TIME_REGION_UPDATE_NAME -> {
-                    Message msg = sendTextRequestMsg(update, REQUEST_LOCATION.getValue());
+                    Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "ur location/city name"));
                     expectingInputService.addExpectingInput(
-                            new ExpectingInputDto(update.getCallbackQuery(), LOCATION_UPDATE, msg)
+                            ExpectingInputDto.builder()
+                                    .userIdAndChatId(update.getCallbackQuery())
+                                    .inputType(LOCATION_UPDATE)
+                                    .previousMsg(REQUEST_MSG_UPDATE, msg)
+                                    .build()
                     );
                 }
                 case NOTIFICATIONS_CONFIG -> {
-                    if (message.getChat().getType().equals("private")) {
-                        userDataService.addPrivateChatUser(message.getChatId(), message.getFrom().getId());
+                    if (message.getChat().getType().equals(PRIVATE)) {
+                        userDataService.addPrivateChatUser(message.getChatId(), update.getCallbackQuery().getFrom().getId());
                     }
                     responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 }
                 case PING_EVERYONE -> responseMsg = new ResponseMsgDataDTO(handleEveryone(message));
                 case UPDATE_USER_GROUP -> {
-                    if(message.getChat().getType().equals("private")) {
+                    if(message.getChat().getType().equals(PRIVATE)) {
                         answerCallbackQuery("only for group chats", update.getCallbackQuery());
                         return;
                     }
@@ -321,7 +331,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     responseMsg = new ResponseMsgDataDTO(
                         updatedMsgText, message.getReplyMarkup()
                     );
-                    answerCallbackQuery("notifications " + (userData.isPresent()? "enabled" : "disabled"), update.getCallbackQuery());
+                    answerCallbackQuery("notifications " + (userData.isPresent()? ENABLED : DISABLED), update.getCallbackQuery());
                 }
                 case CANCEL -> {
                     expectingInputService.removeExpectingInput(message.getChatId());
@@ -355,7 +365,12 @@ public class UtilsBot extends TelegramLongPollingBot {
                             year = calendar.get(Calendar.YEAR);
                             ++month;
                             expectingInputService.addExpectingInput(
-                                    new ExpectingInputDto(update.getCallbackQuery(), NF_BUILD, year, month)
+                                    ExpectingInputDto.builder()
+                                            .userIdAndChatId(update.getCallbackQuery())
+                                            .notificationTimeData(TimeUnits.YEAR, year)
+                                            .notificationTimeData(TimeUnits.MONTH, month)
+                                            .inputType(NF_BUILD)
+                                            .build()
                             );
                         }
                         responseMsg = new ResponseMsgDataDTO(
@@ -379,9 +394,15 @@ public class UtilsBot extends TelegramLongPollingBot {
                     if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
                         expectingInput.notificationTimeData().isPresent()) {
 
-                        Message msg = sendTextRequestMsg(update, "please provide notification time like hh:mm");
+                        Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "notification time like hh:mm"));
                         expectingInputService.addExpectingInput(
-                                new ExpectingInputDto(update.getCallbackQuery(), NF_SET_MANUAL_TIME, msg, expectingInput.notificationTimeData().get())
+                                ExpectingInputDto.builder()
+                                        .userIdAndChatId(update.getCallbackQuery())
+                                        .inputType(NF_SET_MANUAL_TIME)
+                                        .previousMsg(REQUEST_MSG_UPDATE, msg)
+                                        .previousMsg(EVERYONE_CONFIG, message)
+                                        .notificationTimeData(expectingInput.notificationTimeData().get())
+                                        .build()
                         );
                     }
                 }
@@ -426,12 +447,17 @@ public class UtilsBot extends TelegramLongPollingBot {
                     responseMsg = chatConfigService.createNotificationsMsg(message.getChatId(), this);
                 }
                 case ADD_NF_CUSTOM_MSG -> {
-                    Message msg = sendTextRequestMsg(update, "please provide ur custom msg");
+                    Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "ur custom msg"));
                     ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                     if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
                         expectingInput.notificationId().isPresent()) {
                         expectingInputService.addExpectingInput(
-                                new ExpectingInputDto(update.getCallbackQuery(), NF_SET_CUSTOM_MSG, msg, expectingInput.notificationId().get())
+                                ExpectingInputDto.builder()
+                                        .userIdAndChatId(update.getCallbackQuery())
+                                        .inputType(NF_SET_CUSTOM_MSG)
+                                        .previousMsg(REQUEST_MSG_UPDATE, msg)
+                                        .notificationId(expectingInput.notificationId().get())
+                                        .build()
                         );
                     }
                 }
@@ -512,7 +538,11 @@ public class UtilsBot extends TelegramLongPollingBot {
             responseMsg = notificationService.createEditNotificationMsg(id);
             if (responseMsg != null) {
                 expectingInputService.addExpectingInput(
-                        new ExpectingInputDto(update.getCallbackQuery(), NF_UPDATE, id)
+                        ExpectingInputDto.builder()
+                                .userIdAndChatId(update.getCallbackQuery())
+                                .inputType(NF_UPDATE)
+                                .notificationId(id)
+                                .build()
                 );
             }
         }
@@ -623,6 +653,12 @@ public class UtilsBot extends TelegramLongPollingBot {
                         notificationService.addNotification(removeOffset(chatConfig.getGmtOffset(), inputTime), chatConfig.getId());
                         responseMsg = "notification set for " + inputTime.format(defaultDTFormatter);
                     }
+                    expectingInput.previousMsg().ifPresent(prevMsgMap -> {
+                        Message menuMsg = prevMsgMap.get(EVERYONE_CONFIG);
+                        if (menuMsg != null) {
+                            genericUpdateMsg(menuMsg, chatConfigService.createNotificationsMsg(message.getChatId(), this));
+                        }
+                    });
                 }
             }
         }
@@ -641,8 +677,8 @@ public class UtilsBot extends TelegramLongPollingBot {
                 e.printStackTrace();
             }
         }
-        if (expectingInput.previousMsg().isPresent()) {
-            Message prevMsg = expectingInput.previousMsg().get();
+        if (expectingInput.previousMsg().isPresent() && expectingInput.previousMsg().get().get(REQUEST_MSG_UPDATE) != null) {
+            Message prevMsg = expectingInput.previousMsg().get().get(REQUEST_MSG_UPDATE);
             try {
                 executeAsync(
                         EditMessageText.builder()
@@ -663,7 +699,7 @@ public class UtilsBot extends TelegramLongPollingBot {
 
     private String handleEveryone(Message message) {
         String errorMsg = null;
-        if (message.getChat().getType().equals("private"))
+        if (message.getChat().getType().equals(PRIVATE))
             errorMsg = "can't use /everyone in private chat";
         else {
             Set<UserData> allUserData = userDataService.getAllUserData(message.getChatId());
@@ -692,7 +728,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     public Message sendTextRequestMsg(Update update, String text) {
         CallbackQuery callbackQuery = update.getCallbackQuery();
         SendMessage.SendMessageBuilder sendMessageBuilder = SendMessage.builder()
-                .replyMarkup(getKeyboard(REQUEST_LOCATION))
+                .replyMarkup(getKeyboard(REQUEST_MSG_UPDATE))
                 .chatId(callbackQuery.getMessage().getChatId());
         addUserMentions(sendMessageBuilder, names -> names.append(text).toString(), callbackQuery.getFrom());
         try {
@@ -712,36 +748,60 @@ public class UtilsBot extends TelegramLongPollingBot {
             OcrLanguages lang = OcrLanguages.of(langStr);
             byte[] fileData;
             try {
-                fileData = getFileData(message);
+                fileData = getPhotoData(message);
             } catch (TelegramApiException | IOException e) {
                 log.error("failed to load file, message: {}", message);
                 e.printStackTrace();
                 return;
             }
-            String responseMsg = "Failed to process image";
+            String responseText = "Failed to process image";
             if (fileData.length > 0) {
                 Optional<String> textFromImage = ocrService.getTextFromImage(fileData, lang);
                 if (textFromImage.isPresent()) {
-                    responseMsg = textFromImage.get();
+                    responseText = textFromImage.get();
                 }
             }
 
-            try {
-                executeAsync(
-                        SendMessage.builder()
-                                .replyToMessageId(message.getMessageId())
-                                .chatId(message.getChatId())
-                                .text(responseMsg)
-                                .build()
-                );
-            } catch (TelegramApiException | IllegalArgumentException e) {
-                log.error("failed to send response message, message {}", message);
-                e.printStackTrace();
-            }
+            respondToMsg(message, responseText);
         }
     }
 
-    private byte[] getFileData(Message message) throws TelegramApiException, IOException {
+    private void handleVoice(Message message) {
+        String voice = "failed to extract voice";
+        try {
+            voice = transcriptionService.getTranscription(getVoiceData(message));
+        } catch (TelegramApiException e) {
+            log.error("failed to extract voice {}", message);
+            e.printStackTrace();
+        }
+        respondToMsg(message, voice);
+    }
+
+    private java.io.File getVoiceData(Message message) throws TelegramApiException {
+        File execute = execute(
+                GetFile.builder()
+                        .fileId(message.getVoice().getFileId())
+                        .build()
+        );
+        return downloadFile(execute.getFilePath());
+    }
+
+    public void respondToMsg(Message message, String text) {
+        try {
+            executeAsync(
+                    SendMessage.builder()
+                            .replyToMessageId(message.getMessageId())
+                            .chatId(message.getChatId())
+                            .text(text)
+                            .build()
+            );
+        } catch (TelegramApiException | IllegalArgumentException e) {
+            log.error("failed to send response message {}", message);
+            e.printStackTrace();
+        }
+    }
+
+    private byte[] getPhotoData(Message message) throws TelegramApiException, IOException {
         List<PhotoSize> photo = message.getPhoto();
         if (!photo.isEmpty()) {
             String fileId = photo.get(photo.size() - 1).getFileId();

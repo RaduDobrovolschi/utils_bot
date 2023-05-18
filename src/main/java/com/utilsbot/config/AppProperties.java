@@ -18,8 +18,14 @@ public class AppProperties {
 
     private final Bot bot = new Bot();
 
+    private final Microservices microservices = new Microservices();
+
     public Bot getBot() {
         return bot;
+    }
+
+    public Microservices getMicroservices() {
+        return microservices;
     }
 
     public String getOcrApiKey() {
@@ -78,6 +84,19 @@ public class AppProperties {
 
         public void setNotificationsLimit(int notificationsLimit) {
             this.notificationsLimit = notificationsLimit;
+        }
+    }
+
+    public static class Microservices {
+        @NotEmpty
+        private String whisperUrl;
+
+        public String getWhisperUrl() {
+            return whisperUrl;
+        }
+
+        public void setWhisperUrl(String whisperUrl) {
+            this.whisperUrl = whisperUrl;
         }
     }
 }

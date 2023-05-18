@@ -7,6 +7,10 @@ import java.util.regex.Pattern;
 
 public class AppUtils {
 
+    public static final String PRIVATE = "private";
+    public static final String ENABLED = "enabled";
+    public static final String DISABLED = "disabled";
+
     private AppUtils() {}
 
     public static Language fromCode(String code) {
