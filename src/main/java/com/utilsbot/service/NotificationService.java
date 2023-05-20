@@ -45,7 +45,7 @@ public class NotificationService {
             return new ResponseMsgDataDTO(
                     String.format(NOTIFICATION_UPDATE.getValue(),
                             notification.getZonedScheduledFor().format(defaultDTFormatter),
-                            between.toHours(), between.toMinutes() % 60),
+                            between.toDays(), between.toHours() % 24, between.toMinutes() % 60),
                     getKeyboard(NOTIFICATION_UPDATE)
             );
         }

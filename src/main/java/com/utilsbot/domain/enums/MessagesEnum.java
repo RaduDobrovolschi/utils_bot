@@ -9,7 +9,7 @@ public enum MessagesEnum {
                       
                       /DadBot - enable/disable dad bot
                       
-                      /VmToText - enable/disable voice message to text. Transcripts all VMs in this chat if enabled
+                      /VmToText - enable/disable voice message to text. Transcripts all new VMs in this chat if enabled
                       
                       /translate <language code> - sets translation target language
                       will automatically translate all new messages into the target lang
@@ -39,7 +39,7 @@ public enum MessagesEnum {
     SEL_NOTIFY_DAY("Please select notification day"),
     SEL_NOTIFY_HOUR("Please select notification HOUR"),
     SEL_NOTIFY_MIN("Please select notification time in MINUTES"),
-    NOTIFICATION_UPDATE("Notification scheduled for %s\n\nWill run in %d hours and %d minutes"),
+    NOTIFICATION_UPDATE("Notification scheduled for %s\n\nWill run in %d days %d hours and %d minutes"),
     OCR_HELP("Send image with this caption to identify the text. If no language code is specified will default to en. Supported languages: ar, bg, zh, hr, cs, da, nl, fi, fr, de, el, hu, ko, it, ja, pl, pt, ru, sl, es, sv, tr, hi, kn, fa, te, ta, th, vi");
 
     private final String value;

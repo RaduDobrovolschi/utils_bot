@@ -48,7 +48,7 @@ public class NotificationSchedulerService {
     }
 
     @Async
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "1 0 0 * * *")
     public void scheduleNotifications() {
         log.info("extracting scheduled notifications");
         List<NotificationToScheduleDTO> notificationsToSchedule = jdbcTemplate.query(
