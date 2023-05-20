@@ -7,6 +7,7 @@ import com.utilsbot.service.dto.ResponseMsgDataDTO;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -36,13 +37,15 @@ public class NotificationService {
                 ));
     }
 
-    //todo add time till notification to msg
     public ResponseMsgDataDTO createEditNotificationMsg(Long nId) {
         Optional<Notification> byId = notificationRepository.findById(nId);
         if (byId.isPresent()) {
             Notification notification = byId.get();
+            Duration between = Duration.between(LocalDateTime.now(), notification.getScheduledFor());
             return new ResponseMsgDataDTO(
-                    String.format(NOTIFICATION_UPDATE.getValue(), notification.getZonedScheduledFor().format(defaultDTFormatter)),
+                    String.format(NOTIFICATION_UPDATE.getValue(),
+                            notification.getZonedScheduledFor().format(defaultDTFormatter),
+                            between.toHours(), between.toMinutes() % 60),
                     getKeyboard(NOTIFICATION_UPDATE)
             );
         }

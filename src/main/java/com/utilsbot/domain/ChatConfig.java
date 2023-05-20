@@ -34,6 +34,9 @@ public class ChatConfig implements Serializable {
     @Column(name = "dad_bot")
     private Boolean dadBot;
 
+    @Column(name = "vm_to_txt")
+    private Boolean vmToText;
+
     @Column(name = "gmt_offset")
     private Float gmtOffset;
 
@@ -56,6 +59,7 @@ public class ChatConfig implements Serializable {
         this.id = id;
         this.translationTargetLang = Language.NONE;
         this.dadBot = false;
+        this.vmToText = false;
     }
 
     public Long getId() {
@@ -122,17 +126,29 @@ public class ChatConfig implements Serializable {
         this.notifications = notifications;
     }
 
+    public void toggleVmToText() {
+        this.vmToText = !vmToText;
+    }
+
+    public Boolean getVmToText() {
+        return vmToText;
+    }
+
+    public void setVmToText(Boolean vmToText) {
+        this.vmToText = vmToText;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChatConfig that = (ChatConfig) o;
-        return id.equals(that.id) && translationTargetLang == that.translationTargetLang && dadBot.equals(that.dadBot);
+        return id.equals(that.id) && translationTargetLang == that.translationTargetLang && dadBot.equals(that.dadBot) && vmToText.equals(that.vmToText) && Objects.equals(gmtOffset, that.gmtOffset);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, translationTargetLang, dadBot);
+        return Objects.hash(id, translationTargetLang, dadBot, vmToText, gmtOffset);
     }
 
     @Override
@@ -141,6 +157,7 @@ public class ChatConfig implements Serializable {
                 "id=" + id +
                 ", translationTargetLang=" + translationTargetLang +
                 ", dadBot=" + dadBot +
+                ", vmToText=" + vmToText +
                 ", gmtOffset=" + gmtOffset +
                 '}';
     }

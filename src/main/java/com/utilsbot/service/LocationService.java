@@ -16,8 +16,6 @@ import java.util.Optional;
 public class LocationService {
     private final Logger log = LoggerFactory.getLogger(LocationService.class);
 
-    // consider using http://api.timezonedb.com/ for cords
-    //private static final String CORDS_URL = "";
     private static final String LOCATION_NAME_URL = "https://timezone.abstractapi.com/v1/current_time/?api_key=%s&location=%s";
 
     private final RestTemplate restTemplate;

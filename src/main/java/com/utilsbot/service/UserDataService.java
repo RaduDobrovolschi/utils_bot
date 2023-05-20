@@ -25,7 +25,7 @@ public class UserDataService {
 
     public Set<UserData> getAllUserData(Long chatId) {
         Set<UserData> userData = chatConfigService.getChatConfig(chatId).getUserData();
-        Hibernate.initialize(userData); //poxyu
+        Hibernate.initialize(userData);
         return userData;
     }
 
@@ -39,6 +39,13 @@ public class UserDataService {
                     )
             );
         }
+    }
+
+    public void deleteUser(Long chatId, Long userId) {
+        ChatConfig chatConfig = chatConfigService.getChatConfig(chatId);
+        userDataRepository.deleteById(new UserDataIds(
+                userId, chatConfig
+        ));
     }
 
     public Optional<UserData> handleCommand(Long chatId, Long userId) {

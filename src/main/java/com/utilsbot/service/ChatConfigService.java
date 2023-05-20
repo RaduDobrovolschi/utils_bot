@@ -53,6 +53,10 @@ public class ChatConfigService {
         getChatConfig(chatId).setGmtOffset(offset);
     }
 
+    public void deleteChat(Long chatId) {
+        chatConfigRepository.deleteById(chatId);
+    }
+
     public ChatConfig save(ChatConfig chatConfig) {
         return chatConfigRepository.save(chatConfig);
     }

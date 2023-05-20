@@ -17,6 +17,9 @@
             <column name="dad_bot" type="boolean" defaultValueBoolean="false" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
+            <column name="vm_to_txt" type="boolean" defaultValueBoolean="false" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
             <column name="gmt_offset" type="REAL"/>
         </createTable>
     </changeSet>

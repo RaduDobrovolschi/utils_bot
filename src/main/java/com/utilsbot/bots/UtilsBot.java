@@ -4,14 +4,12 @@ import com.utilsbot.config.AppProperties;
 import com.utilsbot.domain.ChatConfig;
 import com.utilsbot.domain.UserData;
 import com.utilsbot.domain.enums.CallbackDataEnum;
-import com.utilsbot.domain.enums.MessagesEnum;
 import com.utilsbot.domain.enums.OcrLanguages;
 import com.utilsbot.domain.enums.TimeUnits;
 import com.utilsbot.service.*;
-import com.utilsbot.service.dto.ExpectingInputDto;
+import com.utilsbot.service.dto.ExpectingInputDTO;
 import com.utilsbot.service.dto.LocationResponseDTO;
 import com.utilsbot.service.dto.ResponseMsgDataDTO;
-import jakarta.annotation.PostConstruct;
 import net.suuft.libretranslate.Language;
 import net.suuft.libretranslate.Translator;
 import org.apache.commons.lang3.StringUtils;
@@ -22,13 +20,12 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.*;
-import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -50,15 +47,6 @@ import static com.utilsbot.keyboard.KeyboardHelper.updateHour;
 import static com.utilsbot.keyboard.KeyboardHelper.updateMinute;
 import static com.utilsbot.utils.AppUtils.*;
 import static com.utilsbot.utils.TimeUtils.*;
-
-/*
- *
- * todo list of shit that can be added
- *   notifications -> this one is gonna be a pain
- *   voice message to text -> reee no free api will have to use a separate microservice
- *   audio file to vm
- *
- */
 
 @Service
 public class UtilsBot extends TelegramLongPollingBot {
@@ -98,35 +86,11 @@ public class UtilsBot extends TelegramLongPollingBot {
         this.asyncExecutor = asyncExecutor;
     }
 
-    @PostConstruct
-    private void postConstruct() {
-        log.debug("Setting bot commands");
-        try {
-//            executeAsync(
-//                    DeleteMyCommands.builder().build()
-//            );
-            executeAsync(
-                    SetMyCommands.builder()
-                            .command(new BotCommand("/info", "info"))
-                            .command(new BotCommand("/everyone", "ping everyone in a group chat"))
-                            .command(new BotCommand("/translate <language code>", "enable translation"))
-                            .command(new BotCommand("/translate", "disable translation"))
-                            .command(new BotCommand("/DadBot", "enable/disable dad bot"))
-                            .build()
-            );
-        } catch (TelegramApiException e) {
-            log.error("failed to set bot commands");
-            e.printStackTrace();
-        }
-        timeInputFormat.setLenient(false);
-    }
-
     @Override
     public void onUpdateReceived(Update update) {
         log.debug("Update request: {}", update);
 
-        //todo add handling for users leaving chat or bot getting kicked
-        asyncExecutor.execute(() -> { //should consider to async only handlePhoto()
+        asyncExecutor.execute(() -> {
             if (update.hasMessage()) {
                 Message message = update.getMessage();
 
@@ -145,15 +109,17 @@ public class UtilsBot extends TelegramLongPollingBot {
                             handleTextMessage(text, update);
                         }
                     }
-                }
-                if (message.hasPhoto()) {
+                } else if (message.hasPhoto()) {
                     handlePhoto(message);
-                }
-                if (message.hasVoice()) {
+                } else if (message.hasVoice()) {
                     handleVoice(message);
+                } else if (message.getLeftChatMember() != null) {
+                    handleLeftChatMember(update);
                 }
             } else if (update.hasCallbackQuery()) {
                 handleCallbackQuery(update);
+            } else if (update.hasMyChatMember()) {
+                handleMyChatMember(update.getMyChatMember());
             }
         });
     }
@@ -172,8 +138,8 @@ public class UtilsBot extends TelegramLongPollingBot {
                     executeAsync(
                             SendMessage.builder()
                                     .chatId(message.getChatId())
-                                    .text(MessagesEnum.START_MESSAGE.getValue())
-                                    .replyMarkup(infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang()))
+                                    .text(START_MESSAGE.getValue())
+                                    .replyMarkup(infoKeyboard(chatConfig))
                                     .build()
                     );
                 } catch (TelegramApiException e) {
@@ -204,9 +170,17 @@ public class UtilsBot extends TelegramLongPollingBot {
             case "/dadbot" -> {
                 ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                 chatConfig.toggleDadBot();
-                chatConfigService.save(chatConfig);
+                chatConfig = chatConfigService.save(chatConfig);
                 responseMsg = "Dad bot is " + (Boolean.TRUE.equals(chatConfig.getDadBot())? ENABLED : DISABLED);
             }
+            case "/vmtotext" -> {
+                ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+                chatConfig.toggleVmToText();
+                chatConfig = chatConfigService.save(chatConfig);
+                responseMsg = "Voice message to text " + (Boolean.TRUE.equals(chatConfig.getVmToText())? ENABLED : DISABLED);
+            }
+            case "/ocr" -> responseMsg = OCR_HELP.getValue();
+
             default -> {
                 if (lowerCaseMessage.startsWith("/translate")) {
                     if (lowerCaseMessage.length() == 10) {
@@ -260,8 +234,8 @@ public class UtilsBot extends TelegramLongPollingBot {
             chatConfig.setTranslationTargetLang(language);
             chatConfigService.save(chatConfig);
             responseMsg = new ResponseMsgDataDTO(
-                    MessagesEnum.START_MESSAGE.getValue(),
-                    infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang())
+                    START_MESSAGE.getValue(),
+                    infoKeyboard(chatConfig)
             );
             answerCallbackQuery("Translation language set to " + language, update.getCallbackQuery());
         }
@@ -271,8 +245,8 @@ public class UtilsBot extends TelegramLongPollingBot {
                 case MAIN_MENU -> {
                     ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                     responseMsg = new ResponseMsgDataDTO(
-                            MessagesEnum.START_MESSAGE.getValue(),
-                            infoKeyboard(chatConfig.getDadBot(), chatConfig.getTranslationTargetLang())
+                            START_MESSAGE.getValue(),
+                            infoKeyboard(chatConfig)
                     );
                 }
                 case TRANSLATION_SELECTOR -> {
@@ -285,19 +259,28 @@ public class UtilsBot extends TelegramLongPollingBot {
                 case DAD_BOT -> {
                     ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
                     chatConfig.toggleDadBot();
-                    chatConfigService.save(chatConfig);
-                    boolean dadBot = chatConfig.getDadBot();
+                    chatConfig = chatConfigService.save(chatConfig);
                     responseMsg = new ResponseMsgDataDTO(
                             message.getText(),
-                            infoKeyboard(dadBot, chatConfig.getTranslationTargetLang())
+                            infoKeyboard(chatConfig)
                     );
-                    answerCallbackQuery("Dad bot " + (dadBot? ENABLED : DISABLED), update.getCallbackQuery());
+                    answerCallbackQuery("Dad bot " + (Boolean.TRUE.equals(chatConfig.getDadBot())? ENABLED : DISABLED), update.getCallbackQuery());
+                }
+                case VM_TO_TXT -> {
+                    ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+                    chatConfig.toggleVmToText();
+                    chatConfig = chatConfigService.save(chatConfig);
+                    responseMsg = new ResponseMsgDataDTO(
+                            message.getText(),
+                            infoKeyboard(chatConfig)
+                    );
+                    answerCallbackQuery("Vm to text " + (Boolean.TRUE.equals(chatConfig.getVmToText())? ENABLED : DISABLED), update.getCallbackQuery());
                 }
                 case TIME_REGION_UPDATE_NAME -> {
                     Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "ur location/city name"));
                     expectingInputCleanup(message.getChatId());
                     expectingInputService.addExpectingInput(
-                            ExpectingInputDto.builder()
+                            ExpectingInputDTO.builder()
                                     .userIdAndChatId(update.getCallbackQuery())
                                     .inputType(LOCATION_UPDATE)
                                     .previousMsg(REQUEST_MSG_UPDATE, msg)
@@ -357,7 +340,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     } else {
                         int month;
                         int year;
-                        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(update.getCallbackQuery().getFrom().getId());
+                        ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(update.getCallbackQuery().getFrom().getId());
                         if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
                                 expectingInput.notificationTimeData().isPresent()) {
 
@@ -371,7 +354,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                             ++month;
                             expectingInputCleanup(message.getChatId());
                             expectingInputService.addExpectingInput(
-                                    ExpectingInputDto.builder()
+                                    ExpectingInputDTO.builder()
                                             .userIdAndChatId(update.getCallbackQuery())
                                             .notificationTimeData(TimeUnits.YEAR, year)
                                             .notificationTimeData(TimeUnits.MONTH, month)
@@ -396,14 +379,14 @@ public class UtilsBot extends TelegramLongPollingBot {
                 case T_ADD_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time + 10);
                 case T_SUB_10 -> responseMsg = handleTimeKeyboardUpdate(message, time -> time - 10);
                 case T_MANUAL_INPUT -> {
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                     if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
                         expectingInput.notificationTimeData().isPresent()) {
 
                         Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "notification time like hh:mm"));
                         expectingInputCleanup(message.getChatId());
                         expectingInputService.addExpectingInput(
-                                ExpectingInputDto.builder()
+                                ExpectingInputDTO.builder()
                                         .userIdAndChatId(update.getCallbackQuery())
                                         .inputType(NF_SET_MANUAL_TIME)
                                         .previousMsg(REQUEST_MSG_UPDATE, msg)
@@ -420,7 +403,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                                 message.getReplyMarkup()
                         );
                     } else {
-                        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                        ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                         if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD) &&
                             expectingInput.notificationTimeData().isPresent()) {
 
@@ -444,7 +427,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     }
                 }
                 case DELETE_NF -> {
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                     if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
                         expectingInput.notificationId().isPresent()) {
                         Long nId = expectingInput.notificationId().get();
@@ -455,12 +438,12 @@ public class UtilsBot extends TelegramLongPollingBot {
                 }
                 case ADD_NF_CUSTOM_MSG -> {
                     Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "ur custom msg"));
-                    ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+                    ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                     if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
                         expectingInput.notificationId().isPresent()) {
                         expectingInputCleanup(message.getChatId());
                         expectingInputService.addExpectingInput(
-                                ExpectingInputDto.builder()
+                                ExpectingInputDTO.builder()
                                         .userIdAndChatId(update.getCallbackQuery())
                                         .inputType(NF_SET_CUSTOM_MSG)
                                         .previousMsg(REQUEST_MSG_UPDATE, msg)
@@ -478,7 +461,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     }
 
     private ResponseMsgDataDTO handleTimeKeyboardUpdate(Message message, IntUnaryOperator timeUpdate) {
-        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+        ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
         if (expectingInput != null &&
            (expectingInput.inputType().equals(NF_BUILD) || expectingInput.inputType().equals(NF_UPDATE)) &&
             expectingInput.notificationTimeData().isPresent()) {
@@ -529,7 +512,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 return;
             }
 
-            ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+            ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
             if (expectingInput != null && expectingInput.inputType().equals(NF_BUILD)) {
                 errorFlag = !expectingInput.updateNotificationTimeData(TimeUnits.YEAR, year) ||
                             !expectingInput.updateNotificationTimeData(TimeUnits.MONTH, month) ||
@@ -547,7 +530,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             if (responseMsg != null) {
                 expectingInputCleanup(message.getChatId());
                 expectingInputService.addExpectingInput(
-                        ExpectingInputDto.builder()
+                        ExpectingInputDTO.builder()
                                 .userIdAndChatId(update.getCallbackQuery())
                                 .inputType(NF_UPDATE)
                                 .notificationId(id)
@@ -615,21 +598,26 @@ public class UtilsBot extends TelegramLongPollingBot {
     }
 
     private void handleMsgResponse(Message message) {
-        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
+        ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(message.getChatId());
         String responseMsg = null;
         switch (expectingInput.inputType()) {
             case LOCATION_UPDATE -> {
-                //todo add option to process timezone_abbreviation and gmt_offset as user input
-                Optional<LocationResponseDTO> locationData = locationService.getLocationData(message.getText());
-                if (locationData.isPresent()) {
-                    LocationResponseDTO locationResult = locationData.get();
-                    chatConfigService.updateGmtOffset(message.getChatId(), locationResult.gmt_offset());
-                    responseMsg = String.format(LOCATION_UPDATED.getValue(),
-                            locationResult.timezone_location(),
-                            locationResult.timezone_abbreviation(),
-                            locationResult.gmt_offset() > 0 ? "+" + locationResult.gmt_offset() : locationResult.gmt_offset());
+                responseMsg = LOCATION_FAIL.getValue();
+                Optional<Float> offsetFromText = getOffsetFromText(message.getText());
+                if (offsetFromText.isPresent()) {
+                    float offset = offsetFromText.get();
+                    chatConfigService.updateGmtOffset(message.getChatId(), offset);
+                    responseMsg = "offset set to " + (offset > 0? "+"  + offset : offset);
                 } else {
-                    responseMsg = LOCATION_FAIL.getValue();
+                    Optional<LocationResponseDTO> locationData = locationService.getLocationData(message.getText());
+                    if (locationData.isPresent()) {
+                        LocationResponseDTO locationResult = locationData.get();
+                        chatConfigService.updateGmtOffset(message.getChatId(), locationResult.gmt_offset());
+                        responseMsg = String.format(LOCATION_UPDATED.getValue(),
+                                locationResult.timezone_location(),
+                                locationResult.timezone_abbreviation(),
+                                locationResult.gmt_offset() > 0 ? "+" + locationResult.gmt_offset() : locationResult.gmt_offset());
+                    }
                 }
             }
             case NF_SET_CUSTOM_MSG -> {
@@ -706,6 +694,19 @@ public class UtilsBot extends TelegramLongPollingBot {
         expectingInputService.removeExpectingInput(message.getChatId());
     }
 
+    private void handleLeftChatMember(Update update) {
+        Message message = update.getMessage();
+        User leftChatMember = message.getLeftChatMember();
+        userDataService.deleteUser(message.getChatId(), leftChatMember.getId());
+    }
+
+    private void handleMyChatMember(ChatMemberUpdated myChatMember) {
+        ChatMember newChatMember = myChatMember.getNewChatMember();
+        if (newChatMember.getStatus().equals("left") && newChatMember.getUser().getUserName().equals(appProperties.getBot().getUsername())) {
+            chatConfigService.deleteChat(myChatMember.getChat().getId());
+        }
+    }
+
     private String handleEveryone(Message message) {
         String errorMsg = null;
         if (message.getChat().getType().equals(PRIVATE))
@@ -776,14 +777,17 @@ public class UtilsBot extends TelegramLongPollingBot {
     }
 
     private void handleVoice(Message message) {
-        String voice = "failed to extract voice";
-        try {
-            voice = transcriptionService.getTranscription(getVoiceData(message));
-        } catch (TelegramApiException e) {
-            log.error("failed to extract voice {}", message);
-            e.printStackTrace();
+        ChatConfig chatConfig = chatConfigService.getChatConfig(message.getChatId());
+        if (Boolean.TRUE.equals(chatConfig.getVmToText())) {
+            String voice = "failed to extract voice";
+            try {
+                voice = transcriptionService.getTranscription(getVoiceData(message));
+            } catch (TelegramApiException e) {
+                log.error("failed to extract voice {}", message);
+                e.printStackTrace();
+            }
+            respondToMsg(message, voice);
         }
-        respondToMsg(message, voice);
     }
 
     private java.io.File getVoiceData(Message message) throws TelegramApiException {
@@ -825,7 +829,7 @@ public class UtilsBot extends TelegramLongPollingBot {
     }
 
     private void expectingInputCleanup(Long chatId) {
-        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(chatId);
+        ExpectingInputDTO expectingInput = expectingInputService.getExpectingInput(chatId);
         if (expectingInput != null) {
             expectingInput.previousMsg().ifPresent(prevMsg ->
                     prevMsg.values().forEach(this::deleteMsg)
@@ -919,9 +923,6 @@ public class UtilsBot extends TelegramLongPollingBot {
         addUserMentions(sendMessageBuilder, 0, stringFormat, users);
     }
 
-    public void addUserMentions(SendMessage.SendMessageBuilder sendMessageBuilder, Function<StringBuilder, String> stringFormat, Set<UserData> userDataList) {
-        addUserMentions(sendMessageBuilder, 0, stringFormat, userDataList);
-    }
     public void addUserMentions(SendMessage.SendMessageBuilder sendMessageBuilder, Integer offset, Function<StringBuilder, String> stringFormat, Set<UserData> userDataList) {
         List<MessageEntity> entities = new ArrayList<>();
         StringBuilder usersText = new StringBuilder();

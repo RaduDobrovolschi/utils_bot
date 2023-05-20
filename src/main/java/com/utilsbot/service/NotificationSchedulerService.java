@@ -3,7 +3,7 @@ package com.utilsbot.service;
 import com.utilsbot.bots.UtilsBot;
 import com.utilsbot.domain.UserData;
 import com.utilsbot.repository.NotificationRepository;
-import com.utilsbot.service.dto.NotificationToScheduleDto;
+import com.utilsbot.service.dto.NotificationToScheduleDTO;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,18 +51,18 @@ public class NotificationSchedulerService {
     @Scheduled(cron = "0 0 * * * *")
     public void scheduleNotifications() {
         log.info("extracting scheduled notifications");
-        List<NotificationToScheduleDto> notificationsToSchedule = jdbcTemplate.query(
+        List<NotificationToScheduleDTO> notificationsToSchedule = jdbcTemplate.query(
                 """
                         select id, scheduled_for
                             from notification
                             where scheduled_for::date = current_date;
-                        """, (rs, rowNum) -> new NotificationToScheduleDto(rs.getLong(1), rs.getTimestamp(2).toInstant())
+                        """, (rs, rowNum) -> new NotificationToScheduleDTO(rs.getLong(1), rs.getTimestamp(2).toInstant())
         );
         log.info("scheduling {} notifications...", notificationsToSchedule.size());
         notificationsToSchedule.forEach(this::addNotification);
     }
 
-    public void addNotification(NotificationToScheduleDto notificationDto) {
+    public void addNotification(NotificationToScheduleDTO notificationDto) {
         taskScheduler.schedule(() ->
                 notificationRepository.findById(notificationDto.notificationId()).ifPresent(notification -> {
                 log.info("running scheduled notification {}", notification);

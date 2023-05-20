@@ -1,7 +1,6 @@
 package com.utilsbot.service;
 
-import com.utilsbot.domain.ChatConfig;
-import com.utilsbot.service.dto.ExpectingInputDto;
+import com.utilsbot.service.dto.ExpectingInputDTO;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -15,9 +14,9 @@ import java.util.Map;
 @Service
 public class ExpectingInputService {
 
-    private final HashMap<Long, ExpectingInputDto> expectingInputMap = new HashMap<>();
+    private final HashMap<Long, ExpectingInputDTO> expectingInputMap = new HashMap<>();
 
-    public void addExpectingInput(ExpectingInputDto expectingInputDto) {
+    public void addExpectingInput(ExpectingInputDTO expectingInputDto) {
         expectingInputMap.put(expectingInputDto.chatId(), expectingInputDto);
     }
 
@@ -25,11 +24,7 @@ public class ExpectingInputService {
         expectingInputMap.remove(key);
     }
 
-    public ExpectingInputDto getExpectingInput(ChatConfig chatConfig) {
-        return expectingInputMap.get(chatConfig.getId());
-    }
-
-    public ExpectingInputDto getExpectingInput(Long chatId) {
+    public ExpectingInputDTO getExpectingInput(Long chatId) {
         return expectingInputMap.get(chatId);
     }
 
@@ -40,7 +35,7 @@ public class ExpectingInputService {
     @Async
     @Scheduled(cron = "${cron.expecting-input-cleanup}")
     public void cleanExpectingInput() {
-        Iterator<Map.Entry<Long, ExpectingInputDto>> iterator = expectingInputMap.entrySet().iterator();
+        Iterator<Map.Entry<Long, ExpectingInputDTO>> iterator = expectingInputMap.entrySet().iterator();
         while (iterator.hasNext()) {
             Instant time = iterator.next().getValue().createTime();
             if (time.isBefore(time.minus(Duration.ofMinutes(5)))) {

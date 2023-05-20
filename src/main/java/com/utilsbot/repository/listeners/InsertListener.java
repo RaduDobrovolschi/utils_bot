@@ -4,7 +4,7 @@ import com.utilsbot.config.CacheFactoryConfiguration;
 import com.utilsbot.domain.Notification;
 import com.utilsbot.domain.UserData;
 import com.utilsbot.service.NotificationSchedulerService;
-import com.utilsbot.service.dto.NotificationToScheduleDto;
+import com.utilsbot.service.dto.NotificationToScheduleDTO;
 import org.hibernate.HibernateException;
 import org.hibernate.event.spi.PostInsertEvent;
 import org.hibernate.event.spi.PostInsertEventListener;
@@ -35,7 +35,7 @@ public class InsertListener implements PostInsertEventListener {
 
             if (LocalDate.from(notification.getScheduledFor()).isEqual(LocalDate.now())) {
                 notificationSchedulerService.addNotification(
-                        new NotificationToScheduleDto(notification.getId(), notification.getScheduledFor().toInstant(ZoneOffset.UTC))
+                        new NotificationToScheduleDTO(notification.getId(), notification.getScheduledFor().toInstant(ZoneOffset.UTC))
                 );
             }
         }

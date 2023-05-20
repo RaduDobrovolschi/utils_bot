@@ -2,6 +2,7 @@ package com.utilsbot.domain.enums;
 
 public enum CallbackDataEnum {
     DAD_BOT,
+    VM_TO_TXT,
     TRANSLATION_SELECTOR,
     EXIT,
     MAIN_MENU,

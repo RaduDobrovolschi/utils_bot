@@ -17,7 +17,7 @@ services:
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:latest
     ports:
-      - "9000:9000"
+      - "9000"
     environment:
       - ASR_MODEL=base
   db:
@@ -28,4 +28,4 @@ services:
      - POSTGRES_USER=postgres
      - POSTGRES_DB=UtilsBotDB
     ports:
-     - "5432:5432"
+     - "5432"

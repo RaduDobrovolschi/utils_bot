@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 public class TimeUtils {
 
@@ -34,10 +35,24 @@ public class TimeUtils {
         }
     }
 
-    public static float getOffsetFromText(String text) {
-        if (text.matches("[-+]?\\d?\\d[,:\\.]\\d?\\d")) {
+    public static Optional<Float> getOffsetFromText(String text) {
+        if (text.matches("[-+]?\\d?\\d[,:\\.]?\\d?\\d?")) {
+            String s = text.replaceFirst(":", ".")
+                    .replaceFirst(",", ".");
+            float offset;
+            try {
+                offset = Float.parseFloat(s);
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+                return Optional.empty();
+            }
+            float mins = offset - (int)offset;
+            if (offset > -11 && offset < 14 &&
+                (mins == 0.0f || mins == 0.30f || mins == 0.45f)) {
+                return Optional.of(offset);
+            }
         }
-        return 0;
+        return Optional.empty();
     }
 
     private TimeUtils() {}

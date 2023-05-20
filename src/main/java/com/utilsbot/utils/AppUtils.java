@@ -52,10 +52,6 @@ public class AppUtils {
         return -1;
     }
 
-    public static Matcher indexOfByRegexToMatcher(CharSequence regex, CharSequence text) {
-        return indexOfByRegexToMatcher(Pattern.compile(regex.toString()), text);
-    }
-
     public static Matcher indexOfByRegexToMatcher(Pattern pattern, CharSequence text) {
         Matcher m = pattern.matcher(text);
         if ( m.find() ) {

@@ -5,7 +5,10 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -38,6 +41,7 @@ public class TranscriptionService {
         apiUrl = appProperties.getMicroservices().getWhisperUrl() + "/asr?method=openai-whisper&task=transcribe&encode=true&output=txt";
     }
 
+    //todo consider adding a system saves file data hash and result data to improve performance
     public String getTranscription(File file) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("audio_file", new FileSystemResource(file));

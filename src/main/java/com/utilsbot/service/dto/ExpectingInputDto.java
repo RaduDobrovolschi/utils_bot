@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.EnumMap;
 import java.util.Optional;
 
-public record ExpectingInputDto(
+public record ExpectingInputDTO(
         Instant createTime,
         Long userId,
         Long chatId,
@@ -92,7 +92,7 @@ public record ExpectingInputDto(
             return this;
         }
 
-        public ExpectingInputDto build() {
+        public ExpectingInputDTO build() {
             if (userId == null) {
                 throw new NullPointerException("userId is marked non-null but is null");
             } else if (chatId == null) {
@@ -100,7 +100,7 @@ public record ExpectingInputDto(
             } else if (inputType == null) {
                 throw new NullPointerException("inputType is marked non-null but is null");
             }
-            return new ExpectingInputDto(
+            return new ExpectingInputDTO(
                             Instant.now(),
                             userId,
                             chatId,

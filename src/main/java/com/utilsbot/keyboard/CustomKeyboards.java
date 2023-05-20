@@ -1,5 +1,6 @@
 package com.utilsbot.keyboard;
 
+import com.utilsbot.domain.ChatConfig;
 import com.utilsbot.domain.enums.MessagesEnum;
 import net.suuft.libretranslate.Language;
 import org.apache.commons.collections4.ListUtils;
@@ -28,15 +29,20 @@ public class CustomKeyboards {
 
     private CustomKeyboards() {}
 
-    public static InlineKeyboardMarkup infoKeyboard(boolean dadBot, Language language) {
+    public static InlineKeyboardMarkup infoKeyboard(ChatConfig chatConfig) {
+        return infoKeyboard(chatConfig.getDadBot(), chatConfig.getVmToText(), chatConfig.getTranslationTargetLang());
+    }
+
+    public static InlineKeyboardMarkup infoKeyboard(boolean dadBot, boolean vmToText, Language language) {
         return InlineKeyboardMarkup.builder()
                 .keyboard(
                         List.of(
                                 List.of(createBtn("Notifications and /everyone", NOTIFICATIONS_CONFIG)),
                                 List.of(
                                         createBtn("Dad bot: " + (dadBot? "ON" : "OFF"), DAD_BOT),
-                                        createBtn("Translation: " + language.getCode().toUpperCase(), TRANSLATION_SELECTOR)
+                                        createBtn("Voice to text: " + (vmToText? "ON" : "OFF"), VM_TO_TXT)
                                         ),
+                                List.of(createBtn("Translation: " + language.getCode().toUpperCase(), TRANSLATION_SELECTOR)),
                                 List.of(createBtn("Exit", EXIT))
                         )
                 ).build();
