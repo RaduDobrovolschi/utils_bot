@@ -35,6 +35,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -73,6 +74,8 @@ public class UtilsBot extends TelegramLongPollingBot {
     private final OcrService ocrService;
     private final TranscriptionService transcriptionService;
     private final Executor asyncExecutor;
+
+    private final SimpleDateFormat timeInputFormat = new SimpleDateFormat("HH:mm");
 
     public UtilsBot(AppProperties appProperties,
                     ChatConfigService chatConfigService,
@@ -115,6 +118,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             log.error("failed to set bot commands");
             e.printStackTrace();
         }
+        timeInputFormat.setLenient(false);
     }
 
     @Override
@@ -291,6 +295,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                 }
                 case TIME_REGION_UPDATE_NAME -> {
                     Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "ur location/city name"));
+                    expectingInputCleanup(message.getChatId());
                     expectingInputService.addExpectingInput(
                             ExpectingInputDto.builder()
                                     .userIdAndChatId(update.getCallbackQuery())
@@ -364,6 +369,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                             month = calendar.get(Calendar.MONTH);
                             year = calendar.get(Calendar.YEAR);
                             ++month;
+                            expectingInputCleanup(message.getChatId());
                             expectingInputService.addExpectingInput(
                                     ExpectingInputDto.builder()
                                             .userIdAndChatId(update.getCallbackQuery())
@@ -395,6 +401,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                         expectingInput.notificationTimeData().isPresent()) {
 
                         Message msg = sendTextRequestMsg(update, String.format(REQUEST_MSG_UPDATE.getValue(), "notification time like hh:mm"));
+                        expectingInputCleanup(message.getChatId());
                         expectingInputService.addExpectingInput(
                                 ExpectingInputDto.builder()
                                         .userIdAndChatId(update.getCallbackQuery())
@@ -451,6 +458,7 @@ public class UtilsBot extends TelegramLongPollingBot {
                     ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(message.getChatId());
                     if (expectingInput != null && expectingInput.inputType().equals(NF_UPDATE) &&
                         expectingInput.notificationId().isPresent()) {
+                        expectingInputCleanup(message.getChatId());
                         expectingInputService.addExpectingInput(
                                 ExpectingInputDto.builder()
                                         .userIdAndChatId(update.getCallbackQuery())
@@ -537,6 +545,7 @@ public class UtilsBot extends TelegramLongPollingBot {
             long id = getIdFromCallback("ID_", callbackData);
             responseMsg = notificationService.createEditNotificationMsg(id);
             if (responseMsg != null) {
+                expectingInputCleanup(message.getChatId());
                 expectingInputService.addExpectingInput(
                         ExpectingInputDto.builder()
                                 .userIdAndChatId(update.getCallbackQuery())
@@ -813,6 +822,15 @@ public class UtilsBot extends TelegramLongPollingBot {
             return Files.readAllBytes(downloadFile(execute.getFilePath()).toPath());
         }
         throw new TelegramApiException("No photos found");
+    }
+
+    private void expectingInputCleanup(Long chatId) {
+        ExpectingInputDto expectingInput = expectingInputService.getExpectingInput(chatId);
+        if (expectingInput != null) {
+            expectingInput.previousMsg().ifPresent(prevMsg ->
+                    prevMsg.values().forEach(this::deleteMsg)
+            );
+        }
     }
 
     private void genericUpdateMsg(Message message, ResponseMsgDataDTO responseMsgDataDTO) {

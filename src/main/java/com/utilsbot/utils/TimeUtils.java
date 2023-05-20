@@ -1,6 +1,5 @@
 package com.utilsbot.utils;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -10,7 +9,6 @@ import java.time.format.DateTimeFormatter;
 public class TimeUtils {
 
     public static final DateTimeFormatter defaultDTFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-    public static final SimpleDateFormat timeInputFormat = new SimpleDateFormat("HH:mm");
 
     public static LocalDateTime getOffsetDateTime(float offset) {
         return OffsetDateTime.now(ZoneOffset.ofHoursMinutes((int)offset, (int)((offset - (int)offset) * 100))).toLocalDateTime();
@@ -34,6 +32,12 @@ public class TimeUtils {
         } else {
             return time.plusHours((int)gmtOffset).plusMinutes((int)((gmtOffset - (int)gmtOffset) * 100));
         }
+    }
+
+    public static float getOffsetFromText(String text) {
+        if (text.matches("[-+]?\\d?\\d[,:\\.]\\d?\\d")) {
+        }
+        return 0;
     }
 
     private TimeUtils() {}
