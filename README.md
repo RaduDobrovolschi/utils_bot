@@ -14,6 +14,7 @@ A telegram bot I made as a university project. Running instance of the bot: [@ut
   - telegrambots-spring-boot-starter
   - liquibase
   - infinispan-cache
+  - postgresql
 
 ## External APIs
  - [abstractapi](https://app.abstractapi.com/) for timezone identification
@@ -22,7 +23,7 @@ A telegram bot I made as a university project. Running instance of the bot: [@ut
  - [This](https://hub.docker.com/r/onerahmet/openai-whisper-asr-webservice#!) amaizing docker container with a [whisper](https://github.com/openai/whisper) model api
 
 ## Run with docker
-Update all ur api keys in docker [docker-compose](https://github.com/RaduDobrovolschi/utils_bot/tree/main/src/main/docker), then run:
+Update all ur api keys in [docker-compose](https://github.com/RaduDobrovolschi/utils_bot/tree/main/src/main/docker), then run:
 ```
 docker-compose up -d
 ```
